@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@source "../../**/*.{html,js,ts,jsx,tsx}";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
+  --font-portal: "Poppins", system-ui, sans-serif;
+
+  --color-bea-copper: #b75a22;
+  --color-bea-copper-dark: #8e3f16;
+  --color-bea-copper-soft: #d9a174;
+  --color-bea-ivory: #f7efe7;
+  --color-bea-ivory-light: #fff9f3;
+  --color-bea-canvas: #f0ebe4;
+  --color-bea-sage: #4f5a4e;
+  --color-bea-sage-muted: #758072;
+  --color-bea-ink: #2f302c;
+  --color-bea-line: #e6d4c4;
+
+  --radius-4xl: 2rem;
+
+  --shadow-soft: 0 1px 2px rgb(47 48 44 / 0.04), 0 8px 24px rgb(47 48 44 / 0.06);
+  --shadow-float: 0 4px 16px rgb(47 48 44 / 0.08), 0 16px 40px rgb(47 48 44 / 0.1);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@import "./landing.css";
+@import "./portal-ui.css";

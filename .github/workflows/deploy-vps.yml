@@ -1,0 +1,136 @@
+name: Build and Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build, Test, and Push Images
+    runs-on: ubuntu-latest
+    outputs:
+      image_prefix: ${{ steps.images.outputs.image_prefix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image prefix
+        id: images
+        run: echo "image_prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: be/go.mod
+          cache-dependency-path: be/go.sum
+
+      - name: Test backend
+        working-directory: be
+        run: go test ./...
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: fe/package-lock.json
+
+      - name: Build frontend
+        working-directory: fe
+        run: |
+          npm ci
+          npm run build
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: be/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.images.outputs.image_prefix }}/api:${{ github.sha }}
+            ${{ steps.images.outputs.image_prefix }}/api:latest
+
+      - name: Build and push auth image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: fe/Dockerfile.auth
+          push: true
+          tags: |
+            ${{ steps.images.outputs.image_prefix }}/auth:${{ github.sha }}
+            ${{ steps.images.outputs.image_prefix }}/auth:latest
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: fe/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.images.outputs.image_prefix }}/web:${{ github.sha }}
+            ${{ steps.images.outputs.image_prefix }}/web:latest
+
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+            git fetch origin main
+            git reset --hard origin/main
+
+            if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_TOKEN }}" ]; then
+              echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            fi
+
+            cat > .env.production <<'EOF'
+            API_IMAGE=${{ needs.build-and-push.outputs.image_prefix }}/api:${{ github.sha }}
+            AUTH_IMAGE=${{ needs.build-and-push.outputs.image_prefix }}/auth:${{ github.sha }}
+            WEB_IMAGE=${{ needs.build-and-push.outputs.image_prefix }}/web:${{ github.sha }}
+            WEB_PORT=${{ secrets.WEB_PORT }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+            BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
+            BETTER_AUTH_JWKS_URL=${{ secrets.BETTER_AUTH_JWKS_URL }}
+            BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            OPENROUTER_SITE_URL=${{ secrets.OPENROUTER_SITE_URL }}
+            AI_MODELS=${{ secrets.AI_MODELS }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            EOF
+
+            docker compose --env-file .env.production -f docker-compose.prod.yml pull
+            docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+            docker image prune -f

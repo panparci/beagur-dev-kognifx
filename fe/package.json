@@ -1,0 +1,40 @@
+{
+  "name": "bea-guru",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:auth": "tsx watch server/index.ts",
+    "auth:migrate": "node node_modules/@better-auth/cli/dist/index.mjs migrate --config server/auth.ts -y",
+    "auth:seed": "tsx server/seed-demo-users.ts",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.6",
+    "axios": "^1.18.1",
+    "better-auth": "^1.6.22",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.27",
+    "lucide-react": "^0.554.0",
+    "maplibre-gl": "^5.24.0",
+    "motion": "^12.42.0",
+    "pg": "^8.22.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.18.0",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.20.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.3.1",
+    "tsx": "^4.22.4",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

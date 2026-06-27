@@ -1,0 +1,22 @@
+.DS_Store
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+be/.env
+fe/.env
+
+# Frontend
+fe/node_modules/
+fe/dist/
+fe/.vite/
+
+# Backend
+be/bin/
+
+# Build/cache
+tmp/
+coverage/
+*.log

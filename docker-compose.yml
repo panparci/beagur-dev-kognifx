@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bea-guru-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: bea_guru
+      POSTGRES_USER: bea_guru_app
+      POSTGRES_PASSWORD: beaguru_secure_2024
+    volumes:
+      - bea_guru_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bea_guru_app -d bea_guru"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bea_guru_pg_data:
