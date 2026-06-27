@@ -11,13 +11,15 @@ import (
 	"bea-guru-api/internal/http/middleware"
 	"bea-guru-api/internal/http/response"
 	"bea-guru-api/internal/mask"
+	"bea-guru-api/internal/notify"
 	"bea-guru-api/internal/store"
 
 	"github.com/gin-gonic/gin"
 )
 
 type InstitutionHandler struct {
-	Store *store.Store
+	Store  *store.Store
+	Notify *notify.Service
 }
 
 func (h InstitutionHandler) List(c *gin.Context) {
@@ -40,6 +42,15 @@ func (h InstitutionHandler) Save(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	if h.Notify != nil && saved.ValidatorUserID != nil && *saved.ValidatorUserID != "" {
+		activated, actErr := h.Store.ActivatePendingUser(c.Request.Context(), *saved.ValidatorUserID)
+		if actErr == nil && activated {
+			contact, cErr := h.Store.GetUserContact(c.Request.Context(), *saved.ValidatorUserID)
+			if cErr == nil {
+				h.Notify.OnAccountActivated(contact.Email, contact.Name, "Kepala sekolah / validator")
+			}
+		}
+	}
 	response.OK(c, saved)
 }
 
@@ -53,7 +64,8 @@ func (h InstitutionHandler) ListValidators(c *gin.Context) {
 }
 
 type TeacherHandler struct {
-	Store *store.Store
+	Store  *store.Store
+	Notify *notify.Service
 }
 
 func (h TeacherHandler) canViewSensitive(viewer user.CurrentUser, profile store.TeacherProfile) bool {
@@ -125,6 +137,7 @@ func (h TeacherHandler) Save(c *gin.Context) {
 		return
 	}
 	body.UserID = current.ID
+	isNewProfile := body.ID == ""
 	lat, lng, canonicalRegion, ok := geo.ResolveCoords(body.Region, body.Latitude, body.Longitude)
 	if ok {
 		body.Latitude = &lat
@@ -137,6 +150,9 @@ func (h TeacherHandler) Save(c *gin.Context) {
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
+	}
+	if isNewProfile && h.Notify != nil {
+		h.Notify.OnTeacherProfileSubmitted(saved)
 	}
 	items := h.maskTeachers([]store.TeacherProfile{saved}, current)
 	response.OK(c, items[0])
@@ -199,6 +215,9 @@ func (h TeacherHandler) Validate(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	if h.Notify != nil {
+		h.Notify.OnValidatorDecision(saved, approve)
+	}
 	items := h.maskTeachers([]store.TeacherProfile{saved}, current)
 	response.OK(c, items[0])
 }
@@ -238,6 +257,9 @@ func (h TeacherHandler) Approve(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	if h.Notify != nil {
+		h.Notify.OnAdminApprovalDecision(saved, approve)
+	}
 	items := h.maskTeachers([]store.TeacherProfile{saved}, current)
 	response.OK(c, items[0])
 }
@@ -253,7 +275,8 @@ func (h TeacherHandler) Approved(c *gin.Context) {
 }
 
 type DonationHandler struct {
-	Store *store.Store
+	Store  *store.Store
+	Notify *notify.Service
 }
 
 func (h DonationHandler) List(c *gin.Context) {
@@ -296,11 +319,18 @@ func (h DonationHandler) Create(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	if h.Notify != nil {
+		h.Notify.OnDonationCreated(saved, store.UserContact{
+			Email: current.Email,
+			Name:  current.Name,
+		})
+	}
 	response.OK(c, saved)
 }
 
 type ReportHandler struct {
-	Store *store.Store
+	Store  *store.Store
+	Notify *notify.Service
 }
 
 func (h ReportHandler) Mine(c *gin.Context) {
@@ -333,6 +363,9 @@ func (h ReportHandler) Create(c *gin.Context) {
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
+	}
+	if h.Notify != nil {
+		h.Notify.OnReportSubmitted(saved)
 	}
 	response.OK(c, saved)
 }
@@ -379,6 +412,9 @@ func (h ReportHandler) UpdateStatus(c *gin.Context) {
 		}
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
+	}
+	if h.Notify != nil {
+		h.Notify.OnReportStatusUpdated(saved)
 	}
 	response.OK(c, saved)
 }

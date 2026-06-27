@@ -7,13 +7,15 @@ import (
 
 	"bea-guru-api/internal/http/middleware"
 	"bea-guru-api/internal/http/response"
+	"bea-guru-api/internal/notify"
 	"bea-guru-api/internal/store"
 
 	"github.com/gin-gonic/gin"
 )
 
 type OnboardingHandler struct {
-	Store *store.Store
+	Store  *store.Store
+	Notify *notify.Service
 }
 
 func (h OnboardingHandler) ChooseRole(c *gin.Context) {
@@ -47,6 +49,10 @@ func (h OnboardingHandler) ChooseRole(c *gin.Context) {
 		}
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", "Gagal menetapkan peran akun.")
 		return
+	}
+
+	if h.Notify != nil {
+		h.Notify.OnRoleChosen(updated.ID, string(updated.Role))
 	}
 
 	response.OK(c, updated)

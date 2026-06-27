@@ -21,6 +21,11 @@ type Config struct {
 	AIModels          []string
 	BetterAuthURL     string
 	BetterAuthJWKSURL string
+	BrevoAPIKey       string
+	EmailFrom         string
+	EmailFromName     string
+	FrontendURL       string
+	InternalNotifySecret string
 	LogLevel          slog.Level
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
@@ -43,6 +48,11 @@ func Load() Config {
 		AIModels:          splitCSV(os.Getenv("AI_MODELS")),
 		BetterAuthURL:     getEnv("BETTER_AUTH_URL", "http://localhost:3000"),
 		BetterAuthJWKSURL: getEnv("BETTER_AUTH_JWKS_URL", "http://localhost:3001/api/auth/jwks"),
+		BrevoAPIKey:       os.Getenv("BREVO_API_KEY"),
+		EmailFrom:         getEnv("EMAIL_FROM", ""),
+		EmailFromName:     getEnv("EMAIL_FROM_NAME", "Bea Guru"),
+		FrontendURL:       firstNonEmpty(os.Getenv("FRONTEND_URL"), os.Getenv("OPENROUTER_SITE_URL"), "http://localhost:3000"),
+		InternalNotifySecret: os.Getenv("INTERNAL_NOTIFY_SECRET"),
 		LogLevel:          parseLogLevel(getEnv("LOG_LEVEL", "info")),
 		ReadHeaderTimeout: getDuration("READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       getDuration("READ_TIMEOUT", 15*time.Second),

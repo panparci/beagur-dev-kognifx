@@ -2,12 +2,14 @@ package router
 
 import (
 	"log/slog"
+	"strings"
 
 	authjwt "bea-guru-api/internal/auth"
 	"bea-guru-api/internal/ai"
 	"bea-guru-api/internal/config"
 	"bea-guru-api/internal/http/handler"
 	"bea-guru-api/internal/http/middleware"
+	"bea-guru-api/internal/notify"
 	"bea-guru-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -40,13 +42,27 @@ func New(deps Dependencies) *gin.Engine {
 	requireUser := middleware.RequireCurrentUser(st, jwtValidator, !deps.Config.IsProduction())
 	perm := middleware.RequirePermission
 
+	notifySvc := notify.New(
+		deps.Logger,
+		deps.Config.BrevoAPIKey,
+		deps.Config.EmailFrom,
+		deps.Config.EmailFromName,
+		deps.Config.FrontendURL,
+		st,
+	)
+	if notifySvc.Enabled() {
+		deps.Logger.Info("email notifications enabled via Brevo")
+	} else {
+		deps.Logger.Info("email notifications disabled (set BREVO_API_KEY and EMAIL_FROM to enable)")
+	}
+
 	healthHandler := handler.HealthHandler{DB: deps.DB}
 	userHandler := handler.UserHandler{}
 	authHandler := handler.AuthHandler{Store: st}
-	institutionHandler := handler.InstitutionHandler{Store: st}
-	teacherHandler := handler.TeacherHandler{Store: st}
-	donationHandler := handler.DonationHandler{Store: st}
-	reportHandler := handler.ReportHandler{Store: st}
+	institutionHandler := handler.InstitutionHandler{Store: st, Notify: notifySvc}
+	teacherHandler := handler.TeacherHandler{Store: st, Notify: notifySvc}
+	donationHandler := handler.DonationHandler{Store: st, Notify: notifySvc}
+	reportHandler := handler.ReportHandler{Store: st, Notify: notifySvc}
 	campaignHandler := handler.NewCampaignHandler(st)
 	settingsHandler := handler.SettingsHandler{Store: st}
 	aiSvc := &ai.Service{
@@ -57,9 +73,13 @@ func New(deps Dependencies) *gin.Engine {
 		AppTitle:    deps.Config.AppName,
 	}
 	aiHandler := handler.AiHandler{Store: st, AI: aiSvc}
-	ledgerHandler := handler.LedgerHandler{Store: st}
-	onboardingHandler := handler.OnboardingHandler{Store: st}
+	ledgerHandler := handler.LedgerHandler{Store: st, Notify: notifySvc}
+	onboardingHandler := handler.OnboardingHandler{Store: st, Notify: notifySvc}
 	publicHandler := handler.NewPublicHandler(st)
+	internalNotifyHandler := handler.InternalNotifyHandler{
+		Notify: notifySvc,
+		Secret: deps.Config.InternalNotifySecret,
+	}
 
 	r.GET("/healthz", healthHandler.Health)
 	r.GET("/readyz", healthHandler.Ready)
@@ -71,6 +91,9 @@ func New(deps Dependencies) *gin.Engine {
 	v1.GET("/public/teachers", publicHandler.Teachers)
 	v1.GET("/public/rag", aiHandler.SearchRag)
 	v1.GET("/public/rag/all", aiHandler.ListRag)
+	if strings.TrimSpace(deps.Config.InternalNotifySecret) != "" {
+		v1.POST("/internal/notifications/account-created", internalNotifyHandler.AccountCreated)
+	}
 	if !deps.Config.IsProduction() {
 		v1.POST("/auth/login", authHandler.Login)
 		v1.POST("/auth/dev-login", authHandler.DevLogin)
@@ -108,6 +131,7 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/campaign/progress", perm("overview:read"), campaignHandler.Progress)
 
 		auth.GET("/ledger", perm("ledger:read"), ledgerHandler.List)
+		auth.POST("/ledger/disburse", perm("reports:approve"), ledgerHandler.Disburse)
 
 		auth.GET("/settings/terms", settingsHandler.GetTerms)
 		auth.PUT("/settings/terms", perm("settings:write"), settingsHandler.PutTerms)

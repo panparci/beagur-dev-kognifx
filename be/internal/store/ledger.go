@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,61 @@ func (s *Store) ListLedger(ctx context.Context) ([]LedgerEntry, error) {
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+type DisbursementInput struct {
+	TeacherProfileID string
+	Amount           int64
+	Description      string
+}
+
+func (s *Store) CreateDisbursement(ctx context.Context, in DisbursementInput) (LedgerEntry, error) {
+	if err := s.requireDB(); err != nil {
+		return LedgerEntry{}, err
+	}
+	if in.Amount <= 0 {
+		return LedgerEntry{}, ErrInvalidState
+	}
+	tid, err := parseUUID(in.TeacherProfileID)
+	if err != nil {
+		return LedgerEntry{}, err
+	}
+	desc := strings.TrimSpace(in.Description)
+	if desc == "" {
+		desc = "Penyaluran dana Bea Guru"
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return LedgerEntry{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var entry LedgerEntry
+	err = tx.QueryRow(ctx, `
+		INSERT INTO ledger_entries (entry_type, description, amount, teacher_profile_id)
+		VALUES ('OUT', $1, $2, $3)
+		RETURNING id::text, entry_type::text, description, amount, occurred_at`,
+		desc, in.Amount, tid,
+	).Scan(&entry.ID, &entry.Type, &entry.Description, &entry.Amount, &entry.OccurredAt)
+	if err != nil {
+		return LedgerEntry{}, err
+	}
+	entry.Source = "ledger"
+
+	_, err = tx.Exec(ctx, `
+		UPDATE teacher_profiles
+		SET total_received_count = total_received_count + 1,
+		    total_received_amount = total_received_amount + $2
+		WHERE id = $1`, tid, in.Amount)
+	if err != nil {
+		return LedgerEntry{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return LedgerEntry{}, err
+	}
+	return entry, nil
 }
 
 func (s *Store) ListPublicTeachers(ctx context.Context) ([]TeacherProfile, error) {

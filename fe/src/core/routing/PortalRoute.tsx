@@ -5,7 +5,6 @@ import { useAuth } from '@modules/auth/hooks/useAuth';
 import { needsRoleSelection } from '@modules/auth/api/userMapping';
 import { ChooseRoleModal } from '@modules/auth/components/ChooseRoleModal';
 import { PortalOnboardingBackdrop } from '@modules/auth/components/PortalOnboardingBackdrop';
-import { AccountStatus, UserRole } from '@core/types';
 import { resolvePostAuthPath } from '@core/routing/authRedirect';
 import PortalDashboard from '@core/routing/PortalDashboard';
 import { PortalTabGuard } from '@core/routing/PortalTabGuard';
@@ -81,14 +80,6 @@ export function PortalRoute() {
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (
-    view === 'dashboard' &&
-    user.accountStatus === AccountStatus.PENDING_VERIFICATION &&
-    user.role === UserRole.VALIDATOR
-  ) {
-    return <Navigate to="/pending-verification" replace />;
   }
 
   const entryTransition = reduce

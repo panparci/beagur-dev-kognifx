@@ -33,15 +33,19 @@ export function PendingVerificationPage() {
         </p>
         <div className="pending-verify-actions">
           {isTeacher && (
-            <Link to={portalPathForTab('Pengajuan Profil')}>
-              <Button type="button">Lengkapi / ubah profil</Button>
+            <Link
+              to={portalPathForTab('Pengajuan Profil')}
+              className="ui-btn ui-btn--primary ui-btn--md inline-flex items-center justify-center no-underline"
+            >
+              Lengkapi / ubah profil
             </Link>
           )}
           {!isTeacher && user?.role === UserRole.VALIDATOR && (
-            <Link to={portalPathForTab(OVERVIEW_TAB)}>
-              <Button type="button" variant="secondary">
-                Lihat portal sementara
-              </Button>
+            <Link
+              to={portalPathForTab(OVERVIEW_TAB)}
+              className="ui-btn ui-btn--secondary ui-btn--md inline-flex items-center justify-center no-underline"
+            >
+              Lihat portal sementara
             </Link>
           )}
           <Button type="button" variant="secondary" onClick={() => void logout()}>

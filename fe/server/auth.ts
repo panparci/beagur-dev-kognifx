@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { bearer, jwt } from 'better-auth/plugins';
 import pg from 'pg';
 import 'dotenv/config';
+import { notifyAccountCreated } from './notifyAccountCreated.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -74,6 +75,7 @@ export const auth = betterAuth({
         after: async (user) => {
           if (user.email) {
             await ensureAppUser(user.email, user.name ?? user.email);
+            void notifyAccountCreated(user.email, user.name ?? user.email);
           }
         },
       },
