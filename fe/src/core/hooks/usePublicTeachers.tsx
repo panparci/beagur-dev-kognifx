@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { fetchPublicCampaign, fetchPublicTeachers } from '../api/publicClient';
+import { onVisibleOnlineInterval } from '../net/lowSignal';
 import { CampaignProgress, TeacherProfile } from '../types';
 
-const REFETCH_INTERVAL_MS = 30_000;
+const REFETCH_INTERVAL_MS = 120_000;
 
 type LandingPublicContextValue = {
   teachers: TeacherProfile[];
@@ -64,13 +65,7 @@ export function PublicTeachersProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     reload(false);
-    const interval = window.setInterval(() => reload(true), REFETCH_INTERVAL_MS);
-    const onFocus = () => reload(true);
-    window.addEventListener('focus', onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-    };
+    return onVisibleOnlineInterval(() => reload(true), REFETCH_INTERVAL_MS);
   }, [reload]);
 
   const value = useMemo(

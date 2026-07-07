@@ -171,6 +171,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
                   alt=""
                   aria-hidden
                   decoding="async"
+                  loading="lazy"
                   onError={() => {
                     if (mascotSrc !== MASCOT_LOCAL_URL) {
                       setMascotSrc(MASCOT_LOCAL_URL);
@@ -191,7 +192,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
                   playsInline
                   controls={false}
                   controlsList="nodownload nofullscreen noremoteplayback"
-                  preload="auto"
+                  preload="none"
                   disablePictureInPicture
                   aria-hidden
                 />

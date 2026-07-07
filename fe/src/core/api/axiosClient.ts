@@ -1,8 +1,10 @@
 import axios, { AxiosError } from 'axios';
 import { API_BASE_URL } from '../config';
 import { getAccessToken, notifyUnauthorized } from '@modules/auth/auth-token';
+import { withNetworkRetry } from '@core/net/lowSignal';
 
-const REQUEST_TIMEOUT_MS = 12_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+const UPLOAD_TIMEOUT_MS = 90_000;
 
 type ApiEnvelope<T> = { data: T };
 type ApiErrorEnvelope = { error: { code: string; message: string } };
@@ -37,10 +39,10 @@ function mapAxiosError(err: unknown): Error {
   }
   const axiosErr = err as AxiosError<ApiErrorEnvelope>;
   if (axiosErr.code === 'ECONNABORTED') {
-    return new Error('Server tidak merespons. Pastikan backend (make run-be) dan database aktif.');
+    return new Error('Koneksi lambat — coba lagi sebentar. Pastikan sinyal cukup stabil.');
   }
   if (!axiosErr.response) {
-    return new Error('Tidak bisa terhubung ke server. Jalankan backend: make run-be');
+    return new Error('Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.');
   }
   const message = axiosErr.response.data?.error?.message;
   if (message) {
@@ -64,6 +66,7 @@ export async function apiUpload<T>(
   try {
     const response = await apiAxios.post(path, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: UPLOAD_TIMEOUT_MS,
     });
     return unwrapData<T>(response.data);
   } catch (err) {
@@ -93,13 +96,21 @@ export async function requestApi<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  try {
+  const run = async () => {
     const response = await apiAxios.request({
       method,
       url: path,
       data: body,
     });
     return unwrapData<T>(response.data);
+  };
+
+  try {
+    // ponytail: GET di-retry otomatis — sinyal pelosok sering putus sebentar
+    if (method === 'GET') {
+      return await withNetworkRetry(run, { retries: 2, baseDelayMs: 1_000 });
+    }
+    return await run();
   } catch (err) {
     throw mapAxiosError(err);
   }

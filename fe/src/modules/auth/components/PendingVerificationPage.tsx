@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePendingAccountPoll } from '../hooks/usePendingAccountPoll';
 import { UserRole } from '@core/types';
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
@@ -10,6 +11,7 @@ import { portalPathForTab } from '@core/routing/tabRoutes';
 export function PendingVerificationPage() {
   const { user } = useAuth();
   usePageMeta(PAGE_META.pendingVerification);
+  usePendingAccountPoll(true);
 
   const isTeacher = user?.role === UserRole.TEACHER;
 
@@ -28,6 +30,7 @@ export function PendingVerificationPage() {
         <p className="pending-verify-note">
           <Mail size={16} className="inline mr-1.5 align-text-bottom" aria-hidden />
           Notifikasi akan dikirim ke <strong>{user?.email}</strong> setelah akun aktif.
+          Halaman ini juga mengecek status otomatis saat sinyal tersedia (tanpa perlu refresh manual).
         </p>
         {isTeacher && (
           <div className="pending-verify-actions">
