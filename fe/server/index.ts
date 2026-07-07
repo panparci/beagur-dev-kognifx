@@ -1,7 +1,7 @@
+import './loadEnv.js';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import 'dotenv/config';
 import { auth } from './auth.js';
 
 const port = Number(process.env.AUTH_SERVER_PORT ?? 3001);

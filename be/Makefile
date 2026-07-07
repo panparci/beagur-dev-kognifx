@@ -4,7 +4,7 @@ APP_NAME := bea-guru-api
 export
 
 .PHONY: run build test tidy sqlc db-ping migrate-up migrate-down migrate-status \
-	seed-scale seed-scale-visible cleanup-scale
+	seed-scale seed-scale-visible cleanup-scale cleanup-except-admin sync-r2-static
 
 run:
 	go run ./cmd/api
@@ -47,3 +47,10 @@ seed-scale-visible:
 cleanup-scale:
 	$(MAKE) db-ping
 	psql "$$DATABASE_URL" -f scripts/cleanup-scale-data.sql
+
+cleanup-except-admin:
+	$(MAKE) db-ping
+	psql "$$DATABASE_URL" -f scripts/cleanup-all-except-admin.sql
+
+sync-r2-static:
+	go run ./cmd/r2static

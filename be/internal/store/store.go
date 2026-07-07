@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+
+	"bea-guru-api/internal/storage"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -53,12 +56,18 @@ type TeacherProfile struct {
 }
 
 type Donation struct {
-	ID               string    `json:"id"`
-	DonorUserID      string    `json:"donorUserId"`
-	TeacherProfileID *string   `json:"teacherProfileId,omitempty"`
-	Amount           int64     `json:"amount"`
-	Type             string    `json:"type"`
-	CreatedAt        time.Time `json:"createdAt"`
+	ID                 string    `json:"id"`
+	DonorUserID        string    `json:"donorUserId"`
+	TeacherProfileID   *string   `json:"teacherProfileId,omitempty"`
+	Amount             int64     `json:"amount"`
+	Type               string    `json:"type"`
+	CreatedAt          time.Time `json:"createdAt"`
+	VerificationStatus string    `json:"verificationStatus,omitempty"`
+	ProofURL           string    `json:"proofUrl,omitempty"`
+	InvoiceNumber      string    `json:"invoiceNumber,omitempty"`
+	DonorName          string    `json:"donorName,omitempty"`
+	DonorEmail         string    `json:"donorEmail,omitempty"`
+	TeacherName        string    `json:"teacherName,omitempty"`
 }
 
 type MonthlyReport struct {
@@ -88,6 +97,7 @@ type CampaignProgress struct {
 	FundedTeachersCount     int64 `json:"fundedTeachersCount"`
 	PublishedTeachersCount  int64 `json:"publishedTeachersCount"`
 	TransferCount           int64 `json:"transferCount"`
+	PendingDonationsCount   int64 `json:"pendingDonationsCount"`
 	MonthlyTeacherTarget    int64 `json:"monthlyTeacherTarget"`
 	CurrentTeacherCount     int64 `json:"currentTeacherCount"`
 }
@@ -100,11 +110,12 @@ type ValidatorUser struct {
 }
 
 type Store struct {
-	pool *pgxpool.Pool
+	pool       *pgxpool.Pool
+	mediaRules storage.MediaRules
 }
 
-func New(pool *pgxpool.Pool) *Store {
-	return &Store{pool: pool}
+func New(pool *pgxpool.Pool, mediaRules storage.MediaRules) *Store {
+	return &Store{pool: pool, mediaRules: mediaRules}
 }
 
 func (s *Store) requireDB() error {
@@ -332,6 +343,9 @@ func (s *Store) SaveTeacher(ctx context.Context, t TeacherProfile) (TeacherProfi
 	}
 	instID, err := parseUUID(t.InstitutionID)
 	if err != nil {
+		return TeacherProfile{}, err
+	}
+	if err := validateTeacherMediaURLs(s.mediaRules, t.PhotoURL, t.TeachingPhotoURL); err != nil {
 		return TeacherProfile{}, err
 	}
 
@@ -572,24 +586,54 @@ func (s *Store) CreateDonation(ctx context.Context, d Donation) (Donation, error
 	if err := s.requireDB(); err != nil {
 		return Donation{}, err
 	}
+	if err := validateDonationAmount(d.Amount); err != nil {
+		return Donation{}, err
+	}
+	if err := requireDonorProofURL(d.ProofURL); err != nil {
+		return Donation{}, err
+	}
+	dtype, err := normalizeDonationType(d.Type)
+	if err != nil {
+		return Donation{}, err
+	}
+	d.Type = dtype
+
 	donorID, err := parseUUID(d.DonorUserID)
 	if err != nil {
 		return Donation{}, err
 	}
+	if err := s.assertDonor(ctx, donorID); err != nil {
+		return Donation{}, err
+	}
+
 	var teacherID any
 	if d.TeacherProfileID != nil && *d.TeacherProfileID != "" {
 		tid, err := parseUUID(*d.TeacherProfileID)
 		if err != nil {
 			return Donation{}, err
 		}
+		if err := s.assertTeacherReceivable(ctx, tid); err != nil {
+			return Donation{}, err
+		}
 		teacherID = tid
 	}
+	invoice := generateInvoiceNumber(d.Amount)
+	proof := strings.TrimSpace(d.ProofURL)
 	err = s.pool.QueryRow(ctx, `
-		INSERT INTO donations (donor_user_id, teacher_profile_id, amount, type)
-		VALUES ($1, $2, $3, $4::donation_type)
-		RETURNING id::text, created_at`,
-		donorID, teacherID, d.Amount, d.Type,
-	).Scan(&d.ID, &d.CreatedAt)
+		INSERT INTO donations (donor_user_id, teacher_profile_id, amount, type, proof_url, verification_status, invoice_number)
+		VALUES ($1, $2, $3, $4::donation_type, $5, 'PENDING', $6)
+		RETURNING id::text, donor_user_id::text, teacher_profile_id::text,
+		          amount, type::text, created_at,
+		          verification_status::text, proof_url, invoice_number`,
+		donorID, teacherID, d.Amount, d.Type, proof, invoice,
+	).Scan(
+		&d.ID, &d.DonorUserID, &d.TeacherProfileID,
+		&d.Amount, &d.Type, &d.CreatedAt,
+		&d.VerificationStatus, &d.ProofURL, &d.InvoiceNumber,
+	)
+	if isUniqueViolation(err) {
+		return Donation{}, ErrConflict
+	}
 	return d, err
 }
 
@@ -597,10 +641,8 @@ func (s *Store) ListDonations(ctx context.Context) ([]Donation, error) {
 	if err := s.requireDB(); err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, donor_user_id::text, teacher_profile_id::text,
-		       amount, type::text, created_at
-		FROM donations ORDER BY created_at DESC`)
+	rows, err := s.pool.Query(ctx, donationSelect+`
+		FROM donations d ORDER BY d.created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -608,8 +650,8 @@ func (s *Store) ListDonations(ctx context.Context) ([]Donation, error) {
 
 	out := make([]Donation, 0)
 	for rows.Next() {
-		var d Donation
-		if err := rows.Scan(&d.ID, &d.DonorUserID, &d.TeacherProfileID, &d.Amount, &d.Type, &d.CreatedAt); err != nil {
+		d, err := scanDonation(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -625,10 +667,8 @@ func (s *Store) ListDonationsByDonor(ctx context.Context, donorUserID string) ([
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, donor_user_id::text, teacher_profile_id::text,
-		       amount, type::text, created_at
-		FROM donations WHERE donor_user_id = $1 ORDER BY created_at DESC`, did)
+	rows, err := s.pool.Query(ctx, donationSelect+`
+		FROM donations d WHERE d.donor_user_id = $1 ORDER BY d.created_at DESC`, did)
 	if err != nil {
 		return nil, err
 	}
@@ -636,8 +676,8 @@ func (s *Store) ListDonationsByDonor(ctx context.Context, donorUserID string) ([
 
 	out := make([]Donation, 0)
 	for rows.Next() {
-		var d Donation
-		if err := rows.Scan(&d.ID, &d.DonorUserID, &d.TeacherProfileID, &d.Amount, &d.Type, &d.CreatedAt); err != nil {
+		d, err := scanDonation(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -657,7 +697,13 @@ func (s *Store) CampaignProgress(ctx context.Context) (CampaignProgress, error) 
 			COALESCE(SUM(amount), 0),
 			COUNT(DISTINCT donor_user_id),
 			COUNT(*)
-		FROM donations`).Scan(&p.Raised, &p.DonorCount, &p.TransferCount)
+		FROM donations WHERE verification_status = 'VERIFIED'`).Scan(&p.Raised, &p.DonorCount, &p.TransferCount)
+	if err != nil {
+		return CampaignProgress{}, err
+	}
+
+	err = s.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM donations WHERE verification_status = 'PENDING'`).Scan(&p.PendingDonationsCount)
 	if err != nil {
 		return CampaignProgress{}, err
 	}
@@ -723,6 +769,9 @@ func (s *Store) CreateReport(ctx context.Context, r MonthlyReport) (MonthlyRepor
 	}
 	uid, err := parseUUID(r.TeacherUserID)
 	if err != nil {
+		return MonthlyReport{}, err
+	}
+	if err := validateReportPhotoURL(s.mediaRules, r.PhotoURL); err != nil {
 		return MonthlyReport{}, err
 	}
 	r.Status = "PENDING"

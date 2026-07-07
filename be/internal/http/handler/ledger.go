@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"bea-guru-api/internal/http/middleware"
 	"bea-guru-api/internal/http/response"
 	"bea-guru-api/internal/notify"
 	"bea-guru-api/internal/store"
@@ -25,6 +26,11 @@ func (h LedgerHandler) List(c *gin.Context) {
 }
 
 func (h LedgerHandler) Disburse(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
 	var body struct {
 		TeacherProfileID string `json:"teacherProfileId"`
 		Amount           int64  `json:"amount"`
@@ -44,10 +50,15 @@ func (h LedgerHandler) Disburse(c *gin.Context) {
 		Amount:           body.Amount,
 		Description:      body.Description,
 	})
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+	if writeStoreError(c, err) {
 		return
 	}
+
+	logAdminAction(c.Request.Context(), h.Store, current.ID, "ledger.disbursement", "ledger", entry.ID, map[string]any{
+		"amount":           body.Amount,
+		"teacherProfileId": body.TeacherProfileID,
+		"description":      body.Description,
+	})
 
 	if h.Notify != nil {
 		if profile, pErr := h.Store.GetTeacherByID(c.Request.Context(), body.TeacherProfileID); pErr == nil {

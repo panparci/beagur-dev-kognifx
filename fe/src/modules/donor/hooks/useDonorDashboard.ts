@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
-import { fundingService } from '@modules/funding/services/fundingService';
-import { Donation, DonationType, MonthlyReport, TeacherProfile } from '@core/types';
+import { uploadService } from '@modules/funding/services/uploadService';
+import { Donation, DonationType, DonationVerificationStatus, MonthlyReport, TeacherProfile } from '@core/types';
 import { EMPTY_DONATION_DRAFT } from '@core/draft/draftTypes';
 import { useDraftState, useUnsavedChangesGuard } from '@core/hooks/useDraftState';
 import { useToast } from '@core/ui/toast/ToastProvider';
+import { sponsoredTeacherProfileIds, verifiedDonations } from '@core/domain/donations';
 
 export type DonorFeedReport = {
   report: MonthlyReport;
@@ -27,6 +28,8 @@ export type AllocationSlice = {
 };
 
 export const DONATION_CHIPS = [100_000, 250_000, 500_000, 1_000_000] as const;
+export const MAX_DONATION_AMOUNT = 1_000_000_000;
+export const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 
 export function useDonorDashboard() {
   const user = useRequireUser();
@@ -48,10 +51,13 @@ export function useDonorDashboard() {
   const [selectedTeacherIndex, setSelectedTeacherIndex] = useState(0);
   const [history, setHistory] = useState<Donation[]>([]);
   const [targetTeacher, setTargetTeacher] = useState<TeacherProfile | null>(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [feedReports, setFeedReports] = useState<DonorFeedReport[]>([]);
   const [isDonateOpen, setIsDonateOpen] = useState(false);
   const [isSuccessMsg, setIsSuccessMsg] = useState(false);
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
+  const [lastSubmittedInvoice, setLastSubmittedInvoice] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
   const {
@@ -64,19 +70,25 @@ export function useDonorDashboard() {
 
   useUnsavedChangesGuard(isDonationDraftDirty && isDonateOpen);
 
+  const verifiedHistory = useMemo(() => verifiedDonations(history), [history]);
+
   const totalDonationAmount = useMemo(
-    () => history.reduce((sum, d) => sum + d.amount, 0),
+    () => verifiedHistory.reduce((sum, d) => sum + d.amount, 0),
+    [verifiedHistory],
+  );
+
+  const pendingDonationCount = useMemo(
+    () => history.filter((d) => d.verificationStatus === DonationVerificationStatus.PENDING).length,
     [history],
   );
 
   const recurringDonationCount = useMemo(
-    () => history.filter((d) => d.type === DonationType.RECURRING).length,
-    [history],
+    () => verifiedHistory.filter((d) => d.type === DonationType.RECURRING).length,
+    [verifiedHistory],
   );
 
   const directSponsorCount = useMemo(() => {
-    const teacherIds = history.map((d) => d.teacherProfileId).filter(Boolean);
-    return new Set(teacherIds).size;
+    return sponsoredTeacherProfileIds(history).size;
   }, [history]);
 
   const estimatedStudentsImpacted = useMemo(() => {
@@ -145,7 +157,7 @@ export function useDonorDashboard() {
       });
     }
 
-    history.forEach((donation) => {
+    verifiedHistory.forEach((donation) => {
       const date = new Date(donation.createdAt);
       const key = `${date.getFullYear()}-${date.getMonth()}`;
       const bucket = buckets.find((item) => item.key === key);
@@ -163,14 +175,14 @@ export function useDonorDashboard() {
         'Akumulasi Saluran': runningTotal,
       };
     });
-  }, [history]);
+  }, [verifiedHistory]);
 
   const hasDonationActivity = totalDonationAmount > 0;
 
   const allocationData = useMemo((): AllocationSlice[] => {
     let recurringSum = 0;
     let oneTimeSum = 0;
-    history.forEach((d) => {
+    verifiedHistory.forEach((d) => {
       if (d.type === DonationType.RECURRING) {
         recurringSum += d.amount;
       } else {
@@ -187,7 +199,7 @@ export function useDonorDashboard() {
       { name: 'Buku & Media Pedagogi', value: Math.floor(oneTimeSum * 0.6), color: '#f59e0b' },
       { name: 'Nutrisi & Alat Gambar Kelas', value: Math.floor(oneTimeSum * 0.4), color: '#e11d48' },
     ].filter((item) => item.value > 0);
-  }, [history]);
+  }, [verifiedHistory]);
 
   const loadStatsAndHistory = useCallback(async () => {
     setPageLoading(true);
@@ -230,17 +242,43 @@ export function useDonorDashboard() {
     setIsDonateOpen(true);
   };
 
+  const handleProofFileChange = (file: File | null) => {
+    if (file && file.size > MAX_PROOF_BYTES) {
+      toast.warning('Ukuran bukti transfer maksimal 5MB.');
+      return;
+    }
+    setProofFile(file);
+    if (file) {
+      patchDonation({ proofUrl: file.name });
+    } else {
+      patchDonation({ proofUrl: '' });
+    }
+  };
+
   const handleCustomDonation = async (e: React.FormEvent) => {
     e.preventDefault();
     const { amount, type, teacherProfileId } = donationDraft;
-    if (!amount || Number(amount) <= 0) {
+    const numericAmount = Number(amount);
+    if (!amount || numericAmount <= 0) {
       toast.warning('Nominal donasi wajib lebih besar dari Rp 0.');
+      return;
+    }
+    if (numericAmount > MAX_DONATION_AMOUNT) {
+      toast.warning('Nominal donasi melebihi batas maksimum per transaksi.');
+      return;
+    }
+    if (!proofFile) {
+      toast.warning('Unggah bukti transfer sebelum mengirim donasi.');
       return;
     }
 
     try {
       const teacherId = targetTeacher?.id ?? (teacherProfileId || undefined);
-      await fundingService.makeDonation(user.id, Number(amount), type, teacherId);
+      setIsUploadingProof(true);
+      const proof = await uploadService.uploadDonationProof(proofFile);
+      patchDonation({ proofUrl: proof });
+      const saved = await fundingService.makeDonation(user.id, numericAmount, type, teacherId, proof);
+      setLastSubmittedInvoice(saved.invoiceNumber ?? null);
       setIsSuccessMsg(true);
       await loadStatsAndHistory();
 
@@ -249,10 +287,19 @@ export function useDonorDashboard() {
         setIsDonateOpen(false);
         commitDonationSuccess();
         discardDonationDraft({ ...EMPTY_DONATION_DRAFT });
+        setProofFile(null);
         setTargetTeacher(null);
+        setLastSubmittedInvoice(null);
       }, 3000);
-    } catch {
-      toast.error('Koneksi terganggu. Coba lagi.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('INVALID_STATE') || msg.includes('409') || msg.includes('CONFLICT')) {
+        toast.error('Donasi ditolak: periksa nominal, guru tujuan, dan format bukti transfer.');
+      } else {
+        toast.error('Gagal mencatat donasi. Periksa koneksi dan coba lagi.');
+      }
+    } finally {
+      setIsUploadingProof(false);
     }
   };
 
@@ -262,11 +309,18 @@ export function useDonorDashboard() {
       return;
     }
 
-    const headers = 'ID,Tanggal,Jumlah,Tipe,Sertifikasi\n';
+    const headers = 'ID,Tanggal,Jumlah,Tipe,Status\n';
     const csvContent = history
       .map(
-        (d, index) =>
-          `${index + 1},${new Date(d.createdAt).toLocaleDateString('id-ID')},${d.amount},"${d.type === DonationType.RECURRING ? 'BULANAN' : 'ONE TIME'}","TERVERIFIKASI"`,
+        (d, index) => {
+          const status =
+            d.verificationStatus === DonationVerificationStatus.VERIFIED
+              ? 'TERVERIFIKASI'
+              : d.verificationStatus === DonationVerificationStatus.REJECTED
+                ? 'DITOLAK'
+                : 'MENUNGGU_VERIFIKASI';
+          return `${index + 1},${new Date(d.createdAt).toLocaleDateString('id-ID')},${d.amount},"${d.type === DonationType.RECURRING ? 'BULANAN' : 'ONE TIME'}","${status}"`;
+        },
       )
       .join('\n');
 
@@ -287,22 +341,58 @@ export function useDonorDashboard() {
     openDonation({ teacher: profile, type: DonationType.RECURRING });
   };
 
-  const currentTeacher = approvedTeachers[selectedTeacherIndex];
+  const sponsoredTeacherIds = useMemo(
+    () => sponsoredTeacherProfileIds(history),
+    [history],
+  );
+
+  const sponsoredTeachers = useMemo(
+    () => approvedTeachers.filter((t) => t.profile.id && sponsoredTeacherIds.has(t.profile.id)),
+    [approvedTeachers, sponsoredTeacherIds],
+  );
+
+  const sponsoredFeedReports = useMemo(() => {
+    const sponsoredUserIds = new Set(sponsoredTeachers.map((t) => t.profile.userId));
+    return feedReports.filter((item) => sponsoredUserIds.has(item.report.teacherUserId));
+  }, [feedReports, sponsoredTeachers]);
+
+  const latestTestimonialByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of sponsoredFeedReports) {
+      if (!map.has(item.report.teacherUserId)) {
+        map.set(item.report.teacherUserId, item.report.description);
+      }
+    }
+    return map;
+  }, [sponsoredFeedReports]);
+
+  useEffect(() => {
+    setSelectedTeacherIndex((prev) => {
+      if (sponsoredTeachers.length === 0) return 0;
+      return Math.min(prev, sponsoredTeachers.length - 1);
+    });
+  }, [sponsoredTeachers.length]);
+
+  const currentSponsoredTeacher = sponsoredTeachers[selectedTeacherIndex];
 
   return {
     user,
     pageLoading,
     progress,
     approvedTeachers,
+    sponsoredTeachers,
+    sponsoredFeedReports,
+    latestTestimonialByUserId,
     selectedTeacherIndex,
     setSelectedTeacherIndex,
-    currentTeacher,
+    currentSponsoredTeacher,
     history,
     feedReports,
     targetTeacher,
     isDonateOpen,
     setIsDonateOpen,
     isSuccessMsg,
+    lastSubmittedInvoice,
     isCertificateOpen,
     setIsCertificateOpen,
     donationDraft,
@@ -310,9 +400,13 @@ export function useDonorDashboard() {
     isDonationDraftDirty,
     openDonation,
     handleCustomDonation,
+    handleProofFileChange,
+    proofFile,
+    isUploadingProof,
     handleDownloadReport,
     handleSponsorTeacher,
     totalDonationAmount,
+    pendingDonationCount,
     recurringDonationCount,
     directSponsorCount,
     estimatedStudentsImpacted,

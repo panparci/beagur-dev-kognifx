@@ -12,3 +12,13 @@ export async function fetchPublicTeachers(): Promise<TeacherProfile[]> {
   const rows = await apiGetPublic<TeacherProfile[]>('/api/v1/public/teachers');
   return Array.isArray(rows) ? rows : [];
 }
+
+export async function fetchPublicTerms(): Promise<string> {
+  const data = await apiGetPublic<{ value: string }>('/api/v1/public/terms');
+  return data.value;
+}
+
+export async function fetchPublicLanding(): Promise<string> {
+  const data = await apiGetPublic<{ value: string }>('/api/v1/public/landing');
+  return data.value;
+}

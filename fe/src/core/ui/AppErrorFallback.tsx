@@ -2,7 +2,9 @@ import React from 'react';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import { presentAppError } from '@core/ui/errorFallback';
 
-const LOGO_SRC = '/brand/bea-guru-logo.png';
+import { LOGO_URL } from '@core/constants/mediaUrls';
+
+const LOGO_SRC = LOGO_URL;
 
 type AppErrorFallbackProps = {
   error: Error | null;

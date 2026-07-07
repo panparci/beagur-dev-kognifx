@@ -5,7 +5,7 @@ import { usePortalNav } from '@core/routing/usePortalNav';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import PortalLogo from './PortalLogo';
 import { UserRole } from '../types';
-import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB } from '../constants/tabs';
+import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB } from '../constants/tabs';
 import { portalPathForTab } from '../routing/tabRoutes';
 import { portalDocumentTitle, SITE_ORG } from '../constants/siteMeta';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -14,7 +14,6 @@ import {
   User as UserIcon,
   LayoutDashboard,
   Building,
-  Users,
   Banknote,
   FileText,
   GraduationCap,
@@ -22,29 +21,23 @@ import {
   Search,
   BookOpen,
   TrendingUp,
+  BarChart3,
+  HandCoins,
+  Globe,
+  ShieldCheck,
+  Users,
 } from 'lucide-react';
+import {
+  ADMIN_NAV_GROUP_ORDER,
+  navMeta,
+  PORTAL_NAV_GROUPS,
+} from '../routing/portalNavMeta';
 
 interface AppLayoutProps {
   children: React.ReactNode;
   title: string;
   onSearch?: (query: string) => void;
 }
-
-const NAV_LABELS: Record<string, string> = {
-  [OVERVIEW_TAB]: 'Gambaran Umum',
-  'Sekolah & Institusi': 'Sekolah',
-  'Buku Ledger Keuangan': 'Keuangan',
-  'Validasi Laporan & Kebijakan': 'Laporan & Kebijakan',
-  'Pengajuan Profil': 'Profil Saya',
-  'Laporan Kelas Bulanan': 'Laporan Bulanan',
-  'Pelatihan Pedagogi': 'Pelatihan',
-  'Jejak Philanthropy': 'Dampak Donasi',
-  [BENEFICIARY_TEACHERS_TAB]: 'Guru Penerima',
-  'Laporan Guru Asuh': 'Laporan Guru',
-  'Riwayat Spreadsheet': 'Riwayat Donasi',
-  'Penyamaan Berkas': 'Validasi Berkas',
-  [VALIDATOR_HISTORY_TAB]: 'Riwayat Guru',
-};
 
 const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.ADMIN]: 'Admin',
@@ -53,24 +46,46 @@ const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.VALIDATOR]: 'Validator',
 };
 
-const getShortName = (name: string) => {
-  const label = NAV_LABELS[name] ?? name;
-  if (label.length <= 9) return label;
-  return label.split(' ')[0];
+type NavLinkItem = {
+  name: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  to: string;
 };
+
+const getShortName = (name: string) => navMeta(name).mobile ?? navMeta(name).label;
+
+function groupNavLinks(links: NavLinkItem[], role: UserRole | undefined) {
+  if (role !== UserRole.ADMIN) return [{ group: null as string | null, links }];
+
+  const buckets = new Map<string | null, NavLinkItem[]>();
+  for (const link of links) {
+    const group = navMeta(link.name).group ?? null;
+    if (!buckets.has(group)) buckets.set(group, []);
+    buckets.get(group)!.push(link);
+  }
+
+  const ordered: { group: string | null; links: NavLinkItem[] }[] = [];
+  for (const g of ADMIN_NAV_GROUP_ORDER) {
+    const items = buckets.get(g);
+    if (items?.length) ordered.push({ group: g, links: items });
+  }
+  const rest = buckets.get(null);
+  if (rest?.length) ordered.push({ group: null, links: rest });
+  return ordered;
+}
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
   const user = useRequireUser();
   const { logout } = useAuth();
   const { activeTab: currentActiveTab } = usePortalNav();
 
-  const activeTabLabel = NAV_LABELS[currentActiveTab] ?? currentActiveTab;
+  const activeMeta = navMeta(currentActiveTab);
 
   usePageMeta({
     title: user?.role
       ? portalDocumentTitle(user.role, currentActiveTab)
       : title,
-    description: `${activeTabLabel} — ${title}. Portal resmi ${SITE_ORG}.`,
+    description: `${activeMeta.label} — ${title}. Portal resmi ${SITE_ORG}.`,
     noIndex: true,
   });
 
@@ -110,7 +125,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
           ...commonLinks,
           { name: 'Sekolah & Institusi', icon: Building, to: portalPathForTab('Sekolah & Institusi') },
           { name: 'Buku Ledger Keuangan', icon: Banknote, to: portalPathForTab('Buku Ledger Keuangan') },
-          { name: 'Validasi Laporan & Kebijakan', icon: Users, to: portalPathForTab('Validasi Laporan & Kebijakan') },
+          { name: 'Donatur & Donasi', icon: HandCoins, to: portalPathForTab('Donatur & Donasi') },
+          { name: ADMIN_ANALYTICS_TAB, icon: BarChart3, to: portalPathForTab(ADMIN_ANALYTICS_TAB) },
+          { name: ADMIN_LANDING_CMS_TAB, icon: Globe, to: portalPathForTab(ADMIN_LANDING_CMS_TAB) },
+          { name: 'Validasi Laporan & Kebijakan', icon: ShieldCheck, to: portalPathForTab('Validasi Laporan & Kebijakan') },
         ];
       case UserRole.TEACHER:
         return [
@@ -139,6 +157,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
   };
 
   const navLinks = getNavLinks(user?.role);
+  const navSections = groupNavLinks(navLinks, user?.role);
 
   return (
     <div className="app-shell flex h-screen min-h-screen overflow-hidden font-portal">
@@ -150,22 +169,35 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
         </div>
 
         <nav className="portal-sidebar-nav" aria-label="Menu portal">
-          {navLinks.map((link) => {
-            const isActive = link.name === currentActiveTab;
-            const label = NAV_LABELS[link.name] ?? link.name;
-            return (
-              <Link
-                key={link.name}
-                to={link.to}
-                className={`portal-nav-link ${isActive ? 'portal-nav-link--active' : ''}`}
-              >
-                <span className={`portal-nav-icon ${isActive ? 'portal-nav-icon--active' : ''}`}>
-                  <link.icon size={17} strokeWidth={isActive ? 2.25 : 2} />
-                </span>
-                <span>{label}</span>
-              </Link>
-            );
-          })}
+          {navSections.map((section) => (
+            <div key={section.group ?? 'default'} className="portal-nav-section">
+              {section.group ? (
+                <p className="portal-nav-group-label">{PORTAL_NAV_GROUPS[section.group]}</p>
+              ) : null}
+              {section.links.map((link) => {
+                const isActive = link.name === currentActiveTab;
+                const meta = navMeta(link.name);
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.to}
+                    className={`portal-nav-link ${isActive ? 'portal-nav-link--active' : ''}`}
+                    title={meta.hint}
+                  >
+                    <span className={`portal-nav-icon ${isActive ? 'portal-nav-icon--active' : ''}`}>
+                      <link.icon size={17} strokeWidth={isActive ? 2.25 : 2} />
+                    </span>
+                    <span className="portal-nav-link__text">
+                      <span className="portal-nav-link__label">{meta.label}</span>
+                      {meta.hint ? (
+                        <span className="portal-nav-link__hint">{meta.hint}</span>
+                      ) : null}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {user && (
@@ -194,7 +226,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
                 <PortalLogo variant="header" />
               </div>
               <div className="min-w-0">
-                <h1 className="portal-header-title">{activeTabLabel}</h1>
+                <h1 className="portal-header-title">{activeMeta.label}</h1>
+                {activeMeta.hint ? (
+                  <p className="portal-header-subtitle">{activeMeta.hint}</p>
+                ) : null}
               </div>
             </div>
 

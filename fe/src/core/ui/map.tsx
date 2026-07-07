@@ -76,6 +76,11 @@ function fitMapToBounds(
   padding: number | MapLibreGL.PaddingOptions,
   lockZoom: boolean,
 ) {
+  if (lockZoom) {
+    // ponytail: unlock dulu — refit resize bisa naikkan zoom di atas maxZoom terkunci
+    map.setMinZoom(-2);
+    map.setMaxZoom(22);
+  }
   map.fitBounds(bounds, { padding, duration: 0, animate: false });
   if (lockZoom) {
     const z = map.getZoom();

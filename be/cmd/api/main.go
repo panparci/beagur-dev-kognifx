@@ -27,6 +27,10 @@ func main() {
 		logger.Error("DATABASE_URL is required — copy be/.env.example to be/.env and set postgres URL")
 		os.Exit(1)
 	}
+	if err := os.MkdirAll(cfg.UploadDir, 0o755); err != nil {
+		logger.Error("upload dir init failed", "dir", cfg.UploadDir, "error", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

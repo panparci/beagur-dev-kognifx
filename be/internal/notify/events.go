@@ -173,6 +173,18 @@ func (s *Service) OnAdminApprovalDecision(profile store.TeacherProfile, approved
 	})
 }
 
+func (s *Service) OnDonationPending(donation store.Donation, donor store.UserContact) {
+	s.runAsync(func(ctx context.Context) {
+		amount := formatIDR(donation.Amount)
+		portal := s.portalURL("/portal")
+		s.sendLogged(ctx, Message{
+			To: donor.Email, ToName: donor.Name,
+			Subject: "Donasi Bea Guru Kamu Sedang Diverifikasi",
+			HTML:    donationPendingHTML(donor.Name, amount, portal),
+		})
+	})
+}
+
 func (s *Service) OnDonationCreated(donation store.Donation, donor store.UserContact) {
 	s.runAsync(func(ctx context.Context) {
 		if s.Store == nil {

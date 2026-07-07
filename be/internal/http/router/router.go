@@ -10,6 +10,7 @@ import (
 	"bea-guru-api/internal/http/handler"
 	"bea-guru-api/internal/http/middleware"
 	"bea-guru-api/internal/notify"
+	"bea-guru-api/internal/storage"
 	"bea-guru-api/internal/store"
 
 	"github.com/gin-gonic/gin"
@@ -33,7 +34,7 @@ func New(deps Dependencies) *gin.Engine {
 	r.Use(middleware.SecurityHeaders(deps.Config.IsProduction()))
 	r.Use(middleware.CORS(deps.Config.AllowedOrigins, !deps.Config.IsProduction()))
 
-	st := store.New(deps.DB)
+	st := store.New(deps.DB, deps.Config.MediaRules())
 	jwtValidator := authjwt.NewValidator(
 		deps.Config.BetterAuthJWKSURL,
 		deps.Config.BetterAuthURL,
@@ -56,12 +57,13 @@ func New(deps Dependencies) *gin.Engine {
 		deps.Logger.Info("email notifications disabled (set BREVO_API_KEY and EMAIL_FROM to enable)")
 	}
 
-	healthHandler := handler.HealthHandler{DB: deps.DB}
+	healthHandler := handler.HealthHandler{DB: deps.DB, UploadDir: deps.Config.UploadDir}
 	userHandler := handler.UserHandler{}
 	authHandler := handler.AuthHandler{Store: st}
 	institutionHandler := handler.InstitutionHandler{Store: st, Notify: notifySvc}
 	teacherHandler := handler.TeacherHandler{Store: st, Notify: notifySvc}
 	donationHandler := handler.DonationHandler{Store: st, Notify: notifySvc}
+	donorHandler := handler.DonorHandler{Store: st}
 	reportHandler := handler.ReportHandler{Store: st, Notify: notifySvc}
 	campaignHandler := handler.NewCampaignHandler(st)
 	settingsHandler := handler.SettingsHandler{Store: st}
@@ -80,6 +82,22 @@ func New(deps Dependencies) *gin.Engine {
 		Notify: notifySvc,
 		Secret: deps.Config.InternalNotifySecret,
 	}
+	proofStore := storage.NewProofStore(deps.Config.UploadDir)
+	r2Client, err := storage.NewR2Client(deps.Config.R2Config())
+	if err != nil {
+		deps.Logger.Error("r2 init failed", "error", err)
+		panic(err)
+	}
+	if r2Client != nil {
+		deps.Logger.Info("media storage: cloudflare r2", "bucket", deps.Config.R2Bucket)
+	} else {
+		deps.Logger.Info("media storage: local disk", "dir", deps.Config.UploadDir)
+	}
+	mediaStore := storage.NewMediaStore(deps.Config.UploadDir, deps.Config.MediaRules(), r2Client)
+	uploadHandler := handler.UploadHandler{Proofs: proofStore, Media: mediaStore}
+	filesHandler := handler.FilesHandler{Proofs: proofStore, Media: mediaStore, Store: st}
+	auditHandler := handler.AuditHandler{Store: st}
+	analyticsHandler := handler.AnalyticsHandler{Store: st}
 
 	r.GET("/healthz", healthHandler.Health)
 	r.GET("/readyz", healthHandler.Ready)
@@ -89,6 +107,9 @@ func New(deps Dependencies) *gin.Engine {
 
 	v1.GET("/public/campaign", campaignHandler.Progress)
 	v1.GET("/public/teachers", publicHandler.Teachers)
+	v1.GET("/public/terms", publicHandler.Terms)
+	v1.GET("/public/landing", publicHandler.Landing)
+	v1.GET("/public/media/*filepath", filesHandler.PublicMedia)
 	v1.GET("/public/rag", aiHandler.SearchRag)
 	v1.GET("/public/rag/all", aiHandler.ListRag)
 	if strings.TrimSpace(deps.Config.InternalNotifySecret) != "" {
@@ -122,6 +143,20 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/donations", perm("donations:read"), donationHandler.List)
 		auth.GET("/donations/mine", perm("donations:write"), donationHandler.Mine)
 		auth.POST("/donations", perm("donations:write"), donationHandler.Create)
+		auth.POST("/uploads/donation-proof", perm("donations:write"), uploadHandler.DonationProof)
+		auth.POST("/uploads/image", perm("teachers:write"), uploadHandler.TeacherImage)
+		auth.POST("/uploads/report-image", perm("reports:write"), uploadHandler.ReportImage)
+		auth.GET("/files/*filepath", filesHandler.Serve)
+		auth.PATCH("/donations/:id/verification", perm("donations:verify"), donationHandler.Verify)
+		auth.POST("/donations/invoice", perm("donations:verify"), donationHandler.CreateInvoice)
+
+		auth.GET("/donors", perm("donors:read"), donorHandler.List)
+		auth.POST("/donors", perm("donors:write"), donorHandler.Save)
+		auth.PATCH("/donors/:id/deactivate", perm("donors:write"), donorHandler.Deactivate)
+
+		auth.GET("/admin/audit-logs", perm("audit:read"), auditHandler.List)
+		auth.GET("/admin/analytics/monthly", perm("analytics:read"), analyticsHandler.Monthly)
+		auth.POST("/admin/analytics/snapshots", perm("analytics:write"), analyticsHandler.ImportSnapshots)
 
 		auth.GET("/reports/mine", perm("reports:write"), reportHandler.Mine)
 		auth.POST("/reports", perm("reports:write"), reportHandler.Create)
@@ -135,6 +170,8 @@ func New(deps Dependencies) *gin.Engine {
 
 		auth.GET("/settings/terms", settingsHandler.GetTerms)
 		auth.PUT("/settings/terms", perm("settings:write"), settingsHandler.PutTerms)
+		auth.GET("/settings/landing", settingsHandler.GetLanding)
+		auth.PUT("/settings/landing", perm("settings:write"), settingsHandler.PutLanding)
 
 		auth.GET("/ai/rag", perm("overview:read"), aiHandler.SearchRag)
 		auth.GET("/ai/rag/all", perm("overview:read"), aiHandler.ListRag)

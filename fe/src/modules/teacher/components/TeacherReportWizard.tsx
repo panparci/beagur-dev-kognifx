@@ -7,6 +7,7 @@ import { AIService } from '@core/services/ai/AIService';
 import { MonthlyReport } from '@core/types';
 import { EMPTY_MONTHLY_REPORT_DRAFT } from '@core/draft/draftTypes';
 import { useDraftState, useUnsavedChangesGuard } from '@core/hooks/useDraftState';
+import { uploadService } from '@modules/funding/services/uploadService';
 import { useToast } from '@core/ui/toast/ToastProvider';
 import { 
   Sparkles, 
@@ -96,17 +97,20 @@ export const TeacherReportWizard: React.FC<TeacherReportWizardProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLoading(true);
-      setLoadingMessage('Sedang membaca foto Anda...');
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        patchDraft({ reportPhoto: reader.result as string });
-        setLoading(false);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setLoading(true);
+    setLoadingMessage('Mengunggah foto kegiatan…');
+    try {
+      const url = await uploadService.uploadImage('report', file);
+      patchDraft({ reportPhoto: url });
+    } catch {
+      toast.error('Gagal mengunggah foto. Gunakan JPG/PNG/WebP maks. 3MB.');
+    } finally {
+      setLoading(false);
+      setLoadingMessage('');
+      e.target.value = '';
     }
   };
 
@@ -165,6 +169,11 @@ export const TeacherReportWizard: React.FC<TeacherReportWizardProps> = ({
     }
     if (!reportPhoto?.trim()) {
       toast.warning('Unggah atau pilih foto kegiatan mengajar terlebih dahulu.');
+      patchDraft({ step: 1 });
+      return;
+    }
+    if (reportPhoto.startsWith('data:image')) {
+      toast.warning('Unggah ulang foto — format lama tidak didukung.');
       patchDraft({ step: 1 });
       return;
     }

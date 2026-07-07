@@ -12,6 +12,12 @@ import {
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
 import { ArrowLeft, Loader2, Mail, User } from 'lucide-react';
+import {
+  MASCOT_FALLBACK_URL,
+  MASCOT_IS_GIF,
+  MASCOT_LOCAL_URL,
+  MASCOT_URL,
+} from '@core/constants/mediaUrls';
 
 interface AuthPageProps {
   onLoginWithEmail: (email: string, password: string) => void;
@@ -24,8 +30,7 @@ interface AuthPageProps {
   authTransitioning?: boolean;
 }
 
-const AUTH_MASCOT_SRC = '/maskot.mp4';
-const AUTH_MASCOT_BG = '#E5DED2';
+const AUTH_MASCOT_BG = '#DFD8CE';
 const IS_DEV = import.meta.env.DEV;
 
 const AUTH_CARD_COPY = {
@@ -61,6 +66,8 @@ const AuthPage: React.FC<AuthPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [devInstantOpen, setDevInstantOpen] = useState(false);
+  const [mascotSrc, setMascotSrc] = useState(MASCOT_URL);
+  const [mascotUseVideo, setMascotUseVideo] = useState(!MASCOT_IS_GIF);
   const mascotRef = useRef<HTMLVideoElement>(null);
 
   usePageMeta(mode === 'login' ? PAGE_META.login : PAGE_META.register);
@@ -79,6 +86,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!mascotUseVideo) return;
     const video = mascotRef.current;
     if (!video) return;
 
@@ -91,7 +99,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
     play();
     video.addEventListener('loadeddata', play);
     return () => video.removeEventListener('loadeddata', play);
-  }, []);
+  }, [mascotUseVideo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,27 +155,47 @@ const AuthPage: React.FC<AuthPageProps> = ({
       >
       <div className="auth-page-grid">
         <aside className="auth-brand" aria-label="Identitas Bea Guru">
-          <button type="button" onClick={onSwitchToLanding} className="auth-back auth-back--on-light">
-            <ArrowLeft size={16} aria-hidden />
-            Beranda
-          </button>
+          <div className="auth-brand-top">
+            <button type="button" onClick={onSwitchToLanding} className="auth-back auth-back--on-light">
+              <ArrowLeft size={16} aria-hidden />
+              Beranda
+            </button>
+          </div>
 
           <div className="auth-brand-body">
             <div className="auth-brand-mascot-wrap">
-              <video
-                ref={mascotRef}
-                className="auth-brand-mascot"
-                src={AUTH_MASCOT_SRC}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls={false}
-                controlsList="nodownload nofullscreen noremoteplayback"
-                preload="auto"
-                disablePictureInPicture
-                aria-hidden
-              />
+              {!mascotUseVideo ? (
+                <img
+                  src={mascotSrc}
+                  className="auth-brand-mascot"
+                  alt=""
+                  aria-hidden
+                  decoding="async"
+                  onError={() => {
+                    if (mascotSrc !== MASCOT_LOCAL_URL) {
+                      setMascotSrc(MASCOT_LOCAL_URL);
+                      return;
+                    }
+                    setMascotSrc(MASCOT_FALLBACK_URL);
+                    setMascotUseVideo(true);
+                  }}
+                />
+              ) : (
+                <video
+                  ref={mascotRef}
+                  className="auth-brand-mascot"
+                  src={mascotSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls={false}
+                  controlsList="nodownload nofullscreen noremoteplayback"
+                  preload="auto"
+                  disablePictureInPicture
+                  aria-hidden
+                />
+              )}
             </div>
             <div className="auth-brand-copy">
               <p className="auth-brand-kicker">Portal resmi yayasan</p>

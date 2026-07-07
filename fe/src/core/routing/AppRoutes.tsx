@@ -10,9 +10,11 @@ import { PortalFogTransition } from '@core/ui/PortalFogTransition';
 import { useAuth } from '@modules/auth/hooks/useAuth';
 import { needsRoleSelection } from '@modules/auth/api/userMapping';
 import LandingPage from '@modules/landing/components/LandingPage';
+import { KeuanganTahunAjaranPage } from '@modules/landing/components/KeuanganTahunAjaranPage';
 import AuthPage from '@modules/auth/components/AuthPage';
 import { PendingVerificationPage } from '@modules/auth/components/PendingVerificationPage';
 import { PortalRoute } from '@core/routing/PortalRoute';
+import { TermsOpenRedirect } from '@modules/legal/components/TermsOpenRedirect';
 import { NotFoundPage } from '@core/routing/NotFoundPage';
 import { resolvePostAuthPath } from '@core/routing/authRedirect';
 import { portalPathForTab } from '@core/routing/tabRoutes';
@@ -132,6 +134,11 @@ export function AppRoutes() {
             )
           }
         />
+        <Route
+          path="/keuangan"
+          element={<KeuanganTahunAjaranPage onSwitchToAuth={() => navigate('/login')} />}
+        />
+        <Route path="/terms" element={<TermsOpenRedirect />} />
         <Route path="/portal/:tabSlug?" element={<PortalRoute />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

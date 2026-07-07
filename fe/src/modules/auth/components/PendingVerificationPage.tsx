@@ -1,16 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Button from '@core/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '@core/types';
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
 import { Clock, Mail } from 'lucide-react';
 import { portalPathForTab } from '@core/routing/tabRoutes';
-import { OVERVIEW_TAB } from '@core/constants/tabs';
 
 export function PendingVerificationPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   usePageMeta(PAGE_META.pendingVerification);
 
   const isTeacher = user?.role === UserRole.TEACHER;
@@ -31,27 +29,16 @@ export function PendingVerificationPage() {
           <Mail size={16} className="inline mr-1.5 align-text-bottom" aria-hidden />
           Notifikasi akan dikirim ke <strong>{user?.email}</strong> setelah akun aktif.
         </p>
-        <div className="pending-verify-actions">
-          {isTeacher && (
+        {isTeacher && (
+          <div className="pending-verify-actions">
             <Link
               to={portalPathForTab('Pengajuan Profil')}
               className="ui-btn ui-btn--primary ui-btn--md inline-flex items-center justify-center no-underline"
             >
               Lengkapi / ubah profil
             </Link>
-          )}
-          {!isTeacher && user?.role === UserRole.VALIDATOR && (
-            <Link
-              to={portalPathForTab(OVERVIEW_TAB)}
-              className="ui-btn ui-btn--secondary ui-btn--md inline-flex items-center justify-center no-underline"
-            >
-              Lihat portal sementara
-            </Link>
-          )}
-          <Button type="button" variant="secondary" onClick={() => void logout()}>
-            Keluar
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

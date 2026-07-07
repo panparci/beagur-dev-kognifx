@@ -3,6 +3,8 @@ import {
   OVERVIEW_TAB,
   BENEFICIARY_TEACHERS_TAB,
   VALIDATOR_HISTORY_TAB,
+  ADMIN_ANALYTICS_TAB,
+  ADMIN_LANDING_CMS_TAB,
 } from '../constants/tabs';
 
 /** All dashboard tab labels — keep in sync with AppLayout nav links. */
@@ -10,6 +12,9 @@ export const ALL_PORTAL_TABS = [
   OVERVIEW_TAB,
   'Sekolah & Institusi',
   'Buku Ledger Keuangan',
+  'Donatur & Donasi',
+  ADMIN_ANALYTICS_TAB,
+  ADMIN_LANDING_CMS_TAB,
   'Validasi Laporan & Kebijakan',
   'Pengajuan Profil',
   'Laporan Kelas Bulanan',
@@ -57,6 +62,9 @@ export function tabsForRole(role: UserRole | undefined): string[] {
         OVERVIEW_TAB,
         'Sekolah & Institusi',
         'Buku Ledger Keuangan',
+        'Donatur & Donasi',
+        ADMIN_ANALYTICS_TAB,
+        ADMIN_LANDING_CMS_TAB,
         'Validasi Laporan & Kebijakan',
       ];
     case UserRole.TEACHER:

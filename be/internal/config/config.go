@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"bea-guru-api/internal/storage"
 )
 
 type Config struct {
@@ -24,8 +26,15 @@ type Config struct {
 	BrevoAPIKey       string
 	EmailFrom         string
 	EmailFromName     string
-	FrontendURL       string
+	FrontendURL          string
 	InternalNotifySecret string
+	R2AccountID          string
+	R2AccessKeyID        string
+	R2SecretAccessKey    string
+	R2Bucket             string
+	R2PublicBaseURL      string
+	UploadDir            string
+	MaxProofBytes     int
 	LogLevel          slog.Level
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
@@ -53,6 +62,13 @@ func Load() Config {
 		EmailFromName:     getEnv("EMAIL_FROM_NAME", "Bea Guru"),
 		FrontendURL:       firstNonEmpty(os.Getenv("FRONTEND_URL"), os.Getenv("OPENROUTER_SITE_URL"), "http://localhost:3000"),
 		InternalNotifySecret: os.Getenv("INTERNAL_NOTIFY_SECRET"),
+		R2AccountID:          os.Getenv("R2_ACCOUNT_ID"),
+		R2AccessKeyID:        os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey:    os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:             getEnv("R2_BUCKET", "bea-guru-media"),
+		R2PublicBaseURL:      strings.TrimRight(strings.TrimSpace(os.Getenv("R2_PUBLIC_BASE_URL")), "/"),
+		UploadDir:            getEnv("UPLOAD_DIR", "uploads"),
+		MaxProofBytes:        storage.MaxProofBytes,
 		LogLevel:          parseLogLevel(getEnv("LOG_LEVEL", "info")),
 		ReadHeaderTimeout: getDuration("READ_HEADER_TIMEOUT", 5*time.Second),
 		ReadTimeout:       getDuration("READ_TIMEOUT", 15*time.Second),
@@ -67,6 +83,20 @@ func (c Config) HTTPAddr() string {
 
 func (c Config) IsProduction() bool {
 	return strings.EqualFold(c.AppEnv, "production")
+}
+
+func (c Config) R2Config() storage.R2Config {
+	return storage.R2Config{
+		AccountID:       c.R2AccountID,
+		AccessKeyID:     c.R2AccessKeyID,
+		SecretAccessKey: c.R2SecretAccessKey,
+		Bucket:          c.R2Bucket,
+		PublicBaseURL:   c.R2PublicBaseURL,
+	}
+}
+
+func (c Config) MediaRules() storage.MediaRules {
+	return storage.MediaRules{PublicBaseURL: c.R2PublicBaseURL}
 }
 
 func getEnv(key, fallback string) string {

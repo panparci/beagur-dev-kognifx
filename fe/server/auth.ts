@@ -1,7 +1,7 @@
+import './loadEnv.js';
 import { betterAuth } from 'better-auth';
 import { bearer, jwt } from 'better-auth/plugins';
 import pg from 'pg';
-import 'dotenv/config';
 import { notifyAccountCreated } from './notifyAccountCreated.js';
 
 const databaseUrl = process.env.DATABASE_URL;

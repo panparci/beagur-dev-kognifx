@@ -1,5 +1,7 @@
 import { requestApi } from './axiosClient';
 
+export { apiUpload, openAuthenticatedFile } from './axiosClient';
+
 export async function apiRequest<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   return requestApi<T>(method, path, options.body);

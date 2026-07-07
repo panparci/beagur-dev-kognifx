@@ -8,7 +8,7 @@ import { useDonorDashboardContext } from '../../context/DonorDashboardContext';
 
 export function DonorReportsTab() {
   const { activeTab: currentActiveTab } = usePortalNav();
-  const { feedReports } = useDonorDashboardContext();
+  const { sponsoredFeedReports } = useDonorDashboardContext();
 
   return (
     <div className={showTab(currentActiveTab, 'Laporan Guru Asuh', 'fill')}>
@@ -19,9 +19,9 @@ export function DonorReportsTab() {
           description="Transparansi langsung dari kelas. Laporan bulanan kegiatan belajar mengajar yang ditulis oleh guru penerima manfaat Bea Guru asuhan Anda."
         />
 
-        {feedReports.length > 0 ? (
+        {sponsoredFeedReports.length > 0 ? (
           <div className="portal-scroll-pane portal-timeline flex-1 min-h-0">
-            {feedReports.map((item, index) => (
+            {sponsoredFeedReports.map((item, index) => (
               <div key={index} className="portal-timeline-item animate-fade-in text-sm">
                 <span className="portal-timeline-dot">
                   <Heart size={11} className="fill-current" />
@@ -81,7 +81,8 @@ export function DonorReportsTab() {
             <BookOpen className="portal-empty-icon mx-auto text-bea-copper-soft" size={40} />
             <p className="portal-empty-title">Belum ada Laporan Publik Terverifikasi</p>
             <p className="portal-empty-desc">
-              Seluruh laporan KBM guru honorer sedang divalidasi oleh verifikator yayasan.
+              Donasi ke guru binaan Anda untuk melihat laporan bulanan mereka di sini setelah
+              diverifikasi yayasan.
             </p>
           </div>
         )}

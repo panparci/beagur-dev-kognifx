@@ -15,7 +15,7 @@ import (
 const publicCacheTTL = 30 * time.Second
 
 type PublicHandler struct {
-	Store  *store.Store
+	Store    *store.Store
 	teachers *cache.TTL[[]store.TeacherProfile]
 }
 
@@ -38,4 +38,22 @@ func (h PublicHandler) Teachers(c *gin.Context) {
 		items[i].BankAccountNumber = mask.BankAccount(items[i].BankAccountNumber, false)
 	}
 	response.OK(c, items)
+}
+
+func (h PublicHandler) Terms(c *gin.Context) {
+	value, err := h.Store.GetSetting(c.Request.Context(), "terms")
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "terms not configured")
+		return
+	}
+	response.OK(c, gin.H{"value": value})
+}
+
+func (h PublicHandler) Landing(c *gin.Context) {
+	value, err := h.Store.GetSetting(c.Request.Context(), "landing")
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "landing not configured")
+		return
+	}
+	response.OK(c, gin.H{"value": value})
 }

@@ -280,7 +280,7 @@ type DonationHandler struct {
 }
 
 func (h DonationHandler) List(c *gin.Context) {
-	items, err := h.Store.ListDonations(c.Request.Context())
+	items, err := h.Store.ListDonationsAdmin(c.Request.Context())
 	if err != nil {
 		response.Error(c, http.StatusServiceUnavailable, "DB_ERROR", err.Error())
 		return
@@ -314,17 +314,82 @@ func (h DonationHandler) Create(c *gin.Context) {
 		return
 	}
 	body.DonorUserID = current.ID
+	if body.Amount <= 0 {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", "amount must be positive")
+		return
+	}
 	saved, err := h.Store.CreateDonation(c.Request.Context(), body)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+	if writeStoreError(c, err) {
 		return
 	}
 	if h.Notify != nil {
-		h.Notify.OnDonationCreated(saved, store.UserContact{
+		h.Notify.OnDonationPending(saved, store.UserContact{
 			Email: current.Email,
 			Name:  current.Name,
 		})
 	}
+	response.OK(c, saved)
+}
+
+func (h DonationHandler) Verify(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	var body struct {
+		Approve       bool   `json:"approve"`
+		InvoiceNumber string `json:"invoiceNumber"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	saved, err := h.Store.VerifyDonation(c.Request.Context(), c.Param("id"), body.Approve, body.InvoiceNumber, current.ID)
+	if writeStoreError(c, err) {
+		return
+	}
+	if h.Notify != nil && body.Approve {
+		contact, cErr := h.Store.GetUserContact(c.Request.Context(), saved.DonorUserID)
+		if cErr == nil {
+			h.Notify.OnDonationCreated(saved, contact)
+		}
+	}
+	action := "donation.rejected"
+	if body.Approve {
+		action = "donation.verified"
+	}
+	logAdminAction(c.Request.Context(), h.Store, current.ID, action, "donation", saved.ID, map[string]any{
+		"amount":        saved.Amount,
+		"invoiceNumber": saved.InvoiceNumber,
+	})
+	response.OK(c, saved)
+}
+
+func (h DonationHandler) CreateInvoice(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	var body store.InvoiceInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	if body.DonorUserID == "" || body.Amount <= 0 {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", "donorUserId and positive amount are required")
+		return
+	}
+	saved, err := h.Store.CreateDonationInvoice(c.Request.Context(), body)
+	if writeStoreError(c, err) {
+		return
+	}
+	logAdminAction(c.Request.Context(), h.Store, current.ID, "donation.invoice_created", "donation", saved.ID, map[string]any{
+		"amount":        saved.Amount,
+		"invoiceNumber": saved.InvoiceNumber,
+		"donorUserId":   saved.DonorUserID,
+	})
 	response.OK(c, saved)
 }
 

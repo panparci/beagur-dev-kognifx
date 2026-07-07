@@ -9,6 +9,7 @@ interface TeacherBeneficiaryCardProps {
   profile: TeacherProfile;
   institutionName: string;
   layout?: 'featured' | 'grid';
+  testimonial?: string;
   onSponsor?: (profile: TeacherProfile) => void;
 }
 
@@ -16,12 +17,13 @@ const TeacherBeneficiaryCard: React.FC<TeacherBeneficiaryCardProps> = ({
   profile,
   institutionName,
   layout = 'grid',
+  testimonial,
   onSponsor,
 }) => {
   const [heroBroken, setHeroBroken] = useState(false);
   const [photoBroken, setPhotoBroken] = useState(false);
 
-  const reasonText = profile.reason ?? '';
+  const reasonText = testimonial ?? profile.reason ?? '';
   const reasonPreview =
     reasonText.length > 220 ? `${reasonText.slice(0, 217)}...` : reasonText;
 

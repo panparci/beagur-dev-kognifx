@@ -49,6 +49,35 @@ function mapAxiosError(err: unknown): Error {
   return new Error(axiosErr.response.statusText || 'Permintaan API gagal');
 }
 
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  fields?: Record<string, string>,
+): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  if (fields) {
+    for (const [key, value] of Object.entries(fields)) {
+      form.append(key, value);
+    }
+  }
+  try {
+    const response = await apiAxios.post(path, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrapData<T>(response.data);
+  } catch (err) {
+    throw mapAxiosError(err);
+  }
+}
+
+export async function openAuthenticatedFile(path: string) {
+  const response = await apiAxios.get(path, { responseType: 'blob' });
+  const objectUrl = URL.createObjectURL(response.data);
+  window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}
+
 function unwrapData<T>(body: unknown): T {
   if (body === undefined || body === null || body === '') {
     throw new Error('Server mengembalikan respons kosong. Pastikan backend aktif (make run-be).');

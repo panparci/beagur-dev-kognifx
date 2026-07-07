@@ -13,11 +13,15 @@ export function DonationModal() {
     isDonateOpen,
     setIsDonateOpen,
     isSuccessMsg,
+    lastSubmittedInvoice,
     targetTeacher,
     donationDraft,
     patchDonation,
     isDonationDraftDirty,
     handleCustomDonation,
+    proofFile,
+    handleProofFileChange,
+    isUploadingProof,
   } = useDonorDashboardContext();
 
   if (!isDonateOpen) return null;
@@ -43,10 +47,16 @@ export function DonationModal() {
         {isSuccessMsg ? (
           <div className="text-center py-8 space-y-3 animate-scale-up">
             <CheckCircle2 size={48} className="text-emerald-500 mx-auto animate-bounce" />
-            <h3 className="font-bold text-base text-bea-ink">Donasi Berhasil Disalurkan!</h3>
+            <h3 className="font-bold text-base text-bea-ink">Donasi Terdaftar — Menunggu Verifikasi</h3>
             <p className="text-xs text-bea-sage leading-relaxed px-4">
-              Terima kasih setinggi-tingginya atas kesediaan Anda memperkuat kesejahteraan pahlawan
-              pendidikan honorer kami. Transaksi dicatat langsung ke dalam database audit.
+              Terima kasih atas kontribusi Anda.
+              {lastSubmittedInvoice ? (
+                <>
+                  {' '}
+                  Nomor invoice: <strong className="font-mono text-bea-ink">{lastSubmittedInvoice}</strong>.
+                </>
+              ) : null}{' '}
+              Tim yayasan memverifikasi bukti transfer sebelum donasi masuk ke ledger transparansi.
             </p>
           </div>
         ) : (
@@ -119,7 +129,7 @@ export function DonationModal() {
                     onChange={() => patchDonation({ type: DonationType.RECURRING })}
                     className="text-bea-copper focus:ring-bea-copper/40"
                   />
-                  <span className="text-xs font-medium">Berdonasi Rutin (Bulanan)</span>
+                  <span className="text-xs font-medium">Komitmen Bulanan</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -132,13 +142,37 @@ export function DonationModal() {
                   <span className="text-xs font-medium">Sekali Waktu (Ad-Hoc)</span>
                 </label>
               </div>
+              {donationDraft.type === DonationType.RECURRING && (
+                <p className="text-[10px] text-bea-sage-muted mt-2 leading-relaxed">
+                  Komitmen bulanan: transfer manual setiap bulan + unggah bukti. Belum ada auto-debit.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="proof-file-input" className={beaFieldLabel}>
+                Unggah Bukti Transfer (JPG/PNG/PDF, maks. 5MB)
+              </label>
+              <input
+                type="file"
+                id="proof-file-input"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(e) => handleProofFileChange(e.target.files?.[0] ?? null)}
+                className={beaInput}
+                required
+              />
+              {proofFile && (
+                <p className="text-[10px] text-bea-sage mt-1">File dipilih: {proofFile.name}</p>
+              )}
             </div>
 
             <div className="flex justify-end pt-3 border-t gap-2">
               <Button type="button" variant="secondary" onClick={() => setIsDonateOpen(false)}>
                 Batal
               </Button>
-              <Button type="submit">Konfirmasi Penyaluran</Button>
+              <Button type="submit" disabled={isUploadingProof}>
+                {isUploadingProof ? 'Mengunggah...' : 'Konfirmasi Penyaluran'}
+              </Button>
             </div>
           </form>
         )}

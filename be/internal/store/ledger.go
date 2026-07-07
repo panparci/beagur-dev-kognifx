@@ -33,6 +33,7 @@ func (s *Store) ListLedger(ctx context.Context) ([]LedgerEntry, error) {
 				'donation'
 			FROM donations d
 			JOIN users u ON u.id = d.donor_user_id
+			WHERE d.verification_status = 'VERIFIED'
 		) combined
 		ORDER BY occurred_at DESC`)
 	if err != nil {
@@ -78,6 +79,18 @@ func (s *Store) CreateDisbursement(ctx context.Context, in DisbursementInput) (L
 		return LedgerEntry{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	var approved bool
+	err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM teacher_profiles WHERE id = $1 AND status = 'APPROVED'
+		)`, tid).Scan(&approved)
+	if err != nil {
+		return LedgerEntry{}, err
+	}
+	if !approved {
+		return LedgerEntry{}, ErrInvalidState
+	}
 
 	var entry LedgerEntry
 	err = tx.QueryRow(ctx, `

@@ -24,7 +24,7 @@ import BusinessFlowBar from '@core/ui/BusinessFlowBar';
 import { beaInput, beaSelect, beaTextarea, beaFieldLabel, beaFieldHint, beaSectionTitle, beaBody } from '@core/ui/beaTheme';
 import { PortalModuleItem, PortalSectionHead, PortalStatChip } from '@core/ui/portal/PortalPrimitives';
 import { useToast } from '@core/ui/toast/ToastProvider';
-import { FormNotice } from '@core/ui/FormNotice';
+import { uploadService } from '@modules/funding/services/uploadService';
 
 const TeacherDashboard: React.FC = () => {
   const user = useRequireUser();
@@ -41,6 +41,7 @@ const TeacherDashboard: React.FC = () => {
   const [aiRewriting, setAiRewriting] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [photoUploading, setPhotoUploading] = useState<'profilePhoto' | 'teachingPhoto' | null>(null);
   const toast = useToast();
 
   const {
@@ -116,14 +117,20 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>, field: 'profilePhoto' | 'teachingPhoto') => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>, field: 'profilePhoto' | 'teachingPhoto') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateProfileDraft({ [field]: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    const kind = field === 'profilePhoto' ? 'teacher-profile' : 'teacher-teaching';
+    setPhotoUploading(field);
+    try {
+      const url = await uploadService.uploadImage(kind, file);
+      updateProfileDraft({ [field]: url });
+      toast.success('Foto berhasil diunggah.', 'Unggah foto');
+    } catch {
+      toast.error('Gagal mengunggah foto. Gunakan JPG/PNG/WebP maks. 3MB.');
+    } finally {
+      setPhotoUploading(null);
+      e.target.value = '';
     }
   };
 
@@ -193,6 +200,11 @@ const TeacherDashboard: React.FC = () => {
     const effectiveTeachingPhoto = teachingPhoto || profile?.teachingPhotoUrl;
     if (!effectiveProfilePhoto || !effectiveTeachingPhoto) {
       missing.push('Foto formal dan foto saat mengajar');
+    } else if (
+      effectiveProfilePhoto.startsWith('data:image') ||
+      effectiveTeachingPhoto.startsWith('data:image')
+    ) {
+      missing.push('Unggah ulang foto (format lama tidak didukung)');
     }
 
     if (missing.length > 0) {
@@ -481,10 +493,14 @@ const TeacherDashboard: React.FC = () => {
                     <input 
                       id="teacher-photo-formal"
                       type="file" 
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'profilePhoto')}
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={photoUploading === 'profilePhoto'}
+                      onChange={(e) => void handleFileChange(e, 'profilePhoto')}
                       className="portal-file-input"
                     />
+                    {photoUploading === 'profilePhoto' && (
+                      <p className="text-[10px] text-bea-sage-muted mt-1">Mengunggah…</p>
+                    )}
                     {profileDraft.profilePhoto && <img src={profileDraft.profilePhoto} alt="Pratinjau foto formal" className="mt-2 h-20 w-20 rounded-lg object-cover border border-bea-line" />}
                   </div>
                   <div>
@@ -492,10 +508,14 @@ const TeacherDashboard: React.FC = () => {
                     <input 
                       id="teacher-photo-teaching"
                       type="file" 
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'teachingPhoto')}
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={photoUploading === 'teachingPhoto'}
+                      onChange={(e) => void handleFileChange(e, 'teachingPhoto')}
                       className="portal-file-input"
                     />
+                    {photoUploading === 'teachingPhoto' && (
+                      <p className="text-[10px] text-bea-sage-muted mt-1">Mengunggah…</p>
+                    )}
                     {profileDraft.teachingPhoto && <img src={profileDraft.teachingPhoto} alt="Pratinjau foto mengajar" className="mt-2 h-20 w-32 rounded-lg object-cover border border-bea-line" />}
                   </div>
                 </div>

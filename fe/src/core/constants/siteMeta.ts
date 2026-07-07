@@ -1,5 +1,5 @@
 import { UserRole } from '@core/types';
-import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB } from '@core/constants/tabs';
+import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB } from '@core/constants/tabs';
 
 export const SITE_NAME = 'Bea Guru';
 export const SITE_BRAND = 'Bea Guru Indonesia';
@@ -22,14 +22,19 @@ export const SITE_KEYWORDS = [
   'portal donatur guru',
 ].join(', ');
 
-export const OG_IMAGE_PATH = '/brand/bea-guru-logo.png';
+import { LOGO_URL } from '@core/constants/mediaUrls';
+
+export const OG_IMAGE_PATH = LOGO_URL;
 
 /** Short tab labels — sinkron dengan AppLayout NAV_LABELS. */
 export const PORTAL_TAB_SHORT: Record<string, string> = {
   [OVERVIEW_TAB]: 'Gambaran Umum',
   'Sekolah & Institusi': 'Sekolah',
   'Buku Ledger Keuangan': 'Keuangan',
-  'Validasi Laporan & Kebijakan': 'Laporan & Kebijakan',
+  'Donatur & Donasi': 'Donatur & Donasi',
+  [ADMIN_ANALYTICS_TAB]: 'Grafik Program',
+  [ADMIN_LANDING_CMS_TAB]: 'Halaman Depan',
+  'Validasi Laporan & Kebijakan': 'Syarat & Ketentuan',
   'Pengajuan Profil': 'Profil Guru',
   'Laporan Kelas Bulanan': 'Laporan Bulanan',
   'Pelatihan Pedagogi': 'Pelatihan',
@@ -86,5 +91,11 @@ export const PAGE_META = {
     title: buildDocumentTitle('Menunggu Verifikasi Akun'),
     description: 'Akun Anda sedang diverifikasi tim yayasan atau kepala sekolah. Notifikasi dikirim ke email terdaftar.',
     noIndex: true,
+  },
+  keuanganTa2025: {
+    title: buildDocumentTitle('Keuangan Tahun Ajaran 2025 - 2026'),
+    description:
+      'Laporan transparansi donasi Program Bea Guru Indonesia tahun ajaran Juli 2025 – Juni 2026, Provinsi Nusa Tenggara Timur.',
+    noIndex: false,
   },
 } as const;

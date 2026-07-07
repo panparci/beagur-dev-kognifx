@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { usePageMeta } from '@core/hooks/usePageMeta';
 import { SITE_NAME } from '@core/constants/siteMeta';
 
-const LOGO_SRC = '/brand/bea-guru-logo.png';
+import { LOGO_URL } from '@core/constants/mediaUrls';
+
+const LOGO_SRC = LOGO_URL;
 
 export function NotFoundPage() {
   usePageMeta({

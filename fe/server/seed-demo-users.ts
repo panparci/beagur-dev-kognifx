@@ -2,7 +2,7 @@
  * Creates Better Auth accounts for demo personas (password: BeaGuru123!).
  * Run after: npm run auth:migrate
  */
-import 'dotenv/config';
+import './loadEnv.js';
 import { auth, pool } from './auth.js';
 
 const DEMO_PASSWORD = 'BeaGuru123!';

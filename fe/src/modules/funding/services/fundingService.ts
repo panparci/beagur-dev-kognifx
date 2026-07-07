@@ -15,7 +15,8 @@ export const fundingService = {
     donorUserId: string,
     amount: number,
     type: DonationType,
-    teacherProfileId?: string
+    teacherProfileId?: string,
+    proofUrl?: string,
   ): Promise<Donation> {
     if (amount <= 0) {
       throw new Error('Nominal donasi harus lebih besar dari Rp 0.');
@@ -26,7 +27,26 @@ export const fundingService = {
       type,
       createdAt: new Date().toISOString(),
       teacherProfileId,
+      proofUrl,
     });
+  },
+
+  async verifyDonation(donationId: string, approve: boolean, invoiceNumber?: string) {
+    return donationRepository.verify(donationId, approve, invoiceNumber);
+  },
+
+  async createDonationInvoice(input: {
+    donorUserId: string;
+    amount: number;
+    type: DonationType;
+    teacherProfileId?: string;
+    invoiceNumber?: string;
+  }) {
+    return donationRepository.createInvoice(input);
+  },
+
+  async disburseToTeacher(teacherProfileId: string, amount: number, description?: string) {
+    return donationRepository.disburse({ teacherProfileId, amount, description });
   },
 
   async getCampaignProgress() {

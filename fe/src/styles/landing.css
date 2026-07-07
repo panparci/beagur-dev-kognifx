@@ -469,8 +469,54 @@
     opacity: 1;
     transform: none;
   }
+  .keuangan-page-title {
+    animation: none;
+  }
+  .keuangan-chart-slot--pending {
+    animation: none;
+  }
   .progress-modern > span {
     transition: none;
+  }
+}
+
+/* Keuangan TA — entrance (page load, Chart.js-style stagger feel) */
+@keyframes keuangan-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.keuangan-page-title {
+  animation: keuangan-fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.keuangan-chart-slot {
+  min-height: 300px;
+}
+
+.keuangan-chart-slot--pending {
+  background: linear-gradient(
+    180deg,
+    rgb(244 227 211 / 0.35) 0%,
+    rgb(251 241 231 / 0.15) 100%
+  );
+  border-radius: 0.75rem;
+  animation: keuangan-chart-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes keuangan-chart-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
   }
 }
 

@@ -9,15 +9,21 @@ import { usePortalNav } from '@core/routing/usePortalNav';
 import { applicationStatusVariant, applicationStatusLabel } from '@core/domain/applicationStatus';
 import { PortalModal } from '@core/ui/PortalModal';
 import ManageInstitutionModal from '@modules/institutions/components/ManageInstitutionModal';
-import { PlusCircle, Edit, Download, TrendingUp, TrendingDown, ClipboardCheck, ArrowUpDown, ShieldCheck } from 'lucide-react';
+import ManageDonorModal from '@modules/donors/components/ManageDonorModal';
+import { DonationVerificationStatus } from '@core/types';
+import { openAuthenticatedFile } from '@core/api/axiosClient';
+import { PlusCircle, Edit, Download, TrendingUp, TrendingDown, ClipboardCheck, ArrowUpDown } from 'lucide-react';
 import { OVERVIEW_TAB } from '@core/constants/tabs';
 import { showTab } from '@core/ui/tabPanel';
-import DraftStatusBanner from '@core/ui/DraftStatusBanner';
-import { beaTextarea, beaFieldLabel } from '@core/ui/beaTheme';
+import { beaFieldLabel, beaInput } from '@core/ui/beaTheme';
 import {
   AdminDashboardProvider,
   useAdminDashboardContext,
 } from '../context/AdminDashboardContext';
+import { AdminAnalyticsTab } from './tabs/AdminAnalyticsTab';
+import { AdminLandingCmsTab } from './tabs/AdminLandingCmsTab';
+import { AdminTermsTab } from './tabs/AdminTermsTab';
+import { AdminReportsOverviewCard } from './AdminReportsOverviewCard';
 
 function AdminDashboardContent() {
   const { activeTab: currentActiveTab } = usePortalNav();
@@ -36,9 +42,6 @@ function AdminDashboardContent() {
     activeApprovalReview,
     setActiveApprovalReview,
     transactions,
-    termsDraft,
-    patchTerms,
-    isTermsDirty,
     validatorMap,
     sortedTeachers,
     filteredInstitutions,
@@ -48,9 +51,38 @@ function AdminDashboardContent() {
     handleCloseModal,
     handleSaveInstitution,
     handleAdminDecision,
-    handleSaveTerms,
     handleExportFinancials,
     toggleSortDirection,
+    donors,
+    donations,
+    isDonorModalOpen,
+    editingDonor,
+    reviewDonation,
+    setReviewDonation,
+    invoiceDonorId,
+    setInvoiceDonorId,
+    invoiceAmount,
+    setInvoiceAmount,
+    invoiceNumber,
+    setInvoiceNumber,
+    isDisburseOpen,
+    setIsDisburseOpen,
+    disburseTeacherId,
+    setDisburseTeacherId,
+    disburseAmount,
+    setDisburseAmount,
+    disburseDescription,
+    setDisburseDescription,
+    approvedTeachers,
+    handleOpenAddDonor,
+    handleOpenEditDonor,
+    handleCloseDonorModal,
+    handleSaveDonor,
+    handleVerifyDonation,
+    handleCreateInvoice,
+    handleDisburse,
+    auditLogs,
+    handleDeactivateDonor,
   } = useAdminDashboardContext();
 
   return (
@@ -65,6 +97,81 @@ function AdminDashboardContent() {
           validators={validators}
           userId={user.id}
         />
+      )}
+
+      {isDonorModalOpen && (
+        <ManageDonorModal
+          isOpen={isDonorModalOpen}
+          onClose={handleCloseDonorModal}
+          onSave={handleSaveDonor}
+          donor={editingDonor}
+        />
+      )}
+
+      {reviewDonation && (
+        <PortalModal
+          id="donation-review-backdrop"
+          title={`Verifikasi Donasi: ${reviewDonation.donorName ?? 'Donatur'}`}
+          onClose={() => setReviewDonation(null)}
+          footer={
+            <>
+              <Button variant="danger" onClick={() => handleVerifyDonation(reviewDonation.id!, false)}>Tolak</Button>
+              <Button variant="success" onClick={() => handleVerifyDonation(reviewDonation.id!, true, reviewDonation.invoiceNumber)}>Verifikasi</Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-sm">
+            <p><strong>Nominal:</strong> Rp {reviewDonation.amount.toLocaleString('id-ID')}</p>
+            <p><strong>Guru tujuan:</strong> {reviewDonation.teacherName || 'Umum yayasan'}</p>
+            {reviewDonation.invoiceNumber && <p><strong>No. Tagihan:</strong> {reviewDonation.invoiceNumber}</p>}
+            {reviewDonation.proofUrl && (
+              <p>
+                <strong>Bukti transfer:</strong>{' '}
+                <button
+                  type="button"
+                  className="text-bea-copper-dark underline font-semibold"
+                  onClick={() => void openAuthenticatedFile(reviewDonation.proofUrl!)}
+                >
+                  Lihat bukti
+                </button>
+              </p>
+            )}
+          </div>
+        </PortalModal>
+      )}
+
+      {isDisburseOpen && (
+        <PortalModal
+          id="disburse-backdrop"
+          title="Catat Penyaluran ke Guru"
+          onClose={() => setIsDisburseOpen(false)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setIsDisburseOpen(false)}>Batal</Button>
+              <Button onClick={() => void handleDisburse()}>Salurkan</Button>
+            </>
+          }
+        >
+          <div className="portal-form-stack text-sm">
+            <div>
+              <label className={beaFieldLabel}>Guru Penerima</label>
+              <select className={beaInput} value={disburseTeacherId} onChange={(e) => setDisburseTeacherId(e.target.value)}>
+                <option value="">Pilih guru...</option>
+                {approvedTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.fullName}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={beaFieldLabel}>Nominal (Rp)</label>
+              <input className={beaInput} type="number" min={1} value={disburseAmount} onChange={(e) => setDisburseAmount(e.target.value)} />
+            </div>
+            <div>
+              <label className={beaFieldLabel}>Keterangan</label>
+              <input className={beaInput} value={disburseDescription} onChange={(e) => setDisburseDescription(e.target.value)} placeholder="Penyaluran bulanan..." />
+            </div>
+          </div>
+        </PortalModal>
       )}
 
       {/* Admin Review Action Dialog */}
@@ -120,7 +227,8 @@ function AdminDashboardContent() {
         <StatCard tone="copper" label="Total Donatur Aktif" value={stats.donorCount.toLocaleString('id-ID')} />
         <StatCard tone="green" label="Guru Penerima Manfaat" value={stats.fundedTeachersCount} />
         <StatCard tone="default" label="Dana Terserap" value={`Rp ${stats.raised.toLocaleString('id-ID')}`} />
-        <StatCard tone="amber" label="Menunggu Persetujuan" value={stats.pendingSubmissionsCount} />
+        <StatCard tone="amber" label="Menunggu Persetujuan Guru" value={stats.pendingSubmissionsCount} />
+        <StatCard tone="rose" label="Donasi Perlu Verifikasi" value={stats.pendingDonationsCount} />
       </StatGrid>
       </div>
 
@@ -151,6 +259,13 @@ function AdminDashboardContent() {
             </Card>
           </div>
         )}
+
+        <div className={showTab(currentActiveTab, OVERVIEW_TAB)}>
+          <AdminReportsOverviewCard
+            reports={reportsWithDetails}
+            onDecision={handleReportDecision}
+          />
+        </div>
 
         <div className={showTab(currentActiveTab, 'Sekolah & Institusi', 'fill')}>
           <Card className="portal-card--fill">
@@ -201,10 +316,15 @@ function AdminDashboardContent() {
               title="Buku Besar Kas & Log Penyaluran Audit"
               description="Pencatatan mutasi penyaluran Bea Guru terpusat penjamin keutuhan transparansi publik."
               action={
-                <Button variant="secondary" onClick={handleExportFinancials} size="sm">
-                  <Download size={14} className="mr-1.5" />
-                  Ekspor Buku Audit
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={() => setIsDisburseOpen(true)} size="sm">
+                    Catat Penyaluran
+                  </Button>
+                  <Button variant="secondary" onClick={handleExportFinancials} size="sm">
+                    <Download size={14} className="mr-1.5" />
+                    Ekspor Buku Audit
+                  </Button>
+                </div>
               }
             />
 
@@ -236,6 +356,136 @@ function AdminDashboardContent() {
           </Card>
         </div>
 
+        <div className={showTab(currentActiveTab, 'Donatur & Donasi', 'fill')}>
+          <div className="portal-page-grid portal-page-grid--2-1 gap-3 min-h-0">
+            <Card className="portal-card--fill">
+              <PortalSectionHead
+                title="Daftar Donatur"
+                description="Kelola profil donatur dan total kontribusi terverifikasi."
+                action={
+                  <Button onClick={handleOpenAddDonor} size="sm">
+                    <PlusCircle size={15} className="mr-1.5" />
+                    Tambah Donatur
+                  </Button>
+                }
+              />
+              <div className="portal-table-wrap portal-table-wrap--fill mt-2">
+                <table className="portal-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Email / Telepon</th>
+                      <th className="text-right">Total Donasi</th>
+                      <th className="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donors.map((d) => (
+                      <tr key={d.id}>
+                        <td className="font-bold text-bea-ink">{d.name}</td>
+                        <td className="text-bea-sage text-xs">
+                          {d.email}
+                          {d.phone ? ` · ${d.phone}` : ''}
+                        </td>
+                        <td className="text-right font-bold">Rp {d.totalDonation.toLocaleString('id-ID')}</td>
+                        <td className="text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button variant="secondary" size="sm" onClick={() => handleOpenEditDonor(d)}>
+                              <Edit size={12} className="mr-1" />
+                              Edit
+                            </Button>
+                            {d.isActive && (
+                              <Button variant="danger" size="sm" onClick={() => void handleDeactivateDonor(d)}>
+                                Nonaktif
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            <Card className="portal-card--fill">
+              <PortalSectionHead title="Buat Tagihan Manual" description="Invoice donasi sebelum transfer masuk." />
+              <div className="portal-form-stack mt-2 text-sm">
+                <select className={beaInput} value={invoiceDonorId} onChange={(e) => setInvoiceDonorId(e.target.value)}>
+                  <option value="">Pilih donatur...</option>
+                  {donors.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                <input className={beaInput} type="number" placeholder="Nominal (Rp)" value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
+                <input className={beaInput} placeholder="No. tagihan (opsional)" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                <Button size="sm" onClick={() => void handleCreateInvoice()}>Buat Tagihan</Button>
+              </div>
+            </Card>
+          </div>
+
+          <Card className="portal-card--fill mt-3">
+            <PortalSectionHead title="Verifikasi Donasi" description="Periksa bukti transfer sebelum donasi masuk ke ledger." />
+            <div className="portal-table-wrap portal-table-wrap--fill mt-2">
+              <table className="portal-table">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Donatur</th>
+                    <th>Guru</th>
+                    <th className="text-right">Jumlah</th>
+                    <th>Status</th>
+                    <th className="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {donations.map((d) => (
+                    <tr key={d.id}>
+                      <td className="font-mono text-bea-sage-muted text-xs">{new Date(d.createdAt).toLocaleDateString('id-ID')}</td>
+                      <td>{d.donorName ?? d.donorUserId}</td>
+                      <td className="text-xs text-bea-sage">{d.teacherName || '—'}</td>
+                      <td className="text-right font-bold">Rp {d.amount.toLocaleString('id-ID')}</td>
+                      <td>
+                        <Badge variant={d.verificationStatus === DonationVerificationStatus.VERIFIED ? 'success' : d.verificationStatus === DonationVerificationStatus.REJECTED ? 'danger' : 'warning'}>
+                          {d.verificationStatus ?? 'PENDING'}
+                        </Badge>
+                      </td>
+                      <td className="text-center">
+                        {d.verificationStatus === DonationVerificationStatus.PENDING && (
+                          <Button variant="secondary" size="sm" onClick={() => setReviewDonation(d)}>Periksa</Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card className="portal-card--fill mt-3">
+            <PortalSectionHead title="Jejak Aktivitas Admin" description="Log verifikasi donasi, penyaluran, dan perubahan donatur." />
+            <div className="portal-scroll-pane max-h-48 mt-2 space-y-2">
+              {auditLogs.length > 0 ? (
+                auditLogs.map((log) => (
+                  <div key={log.id} className="portal-inset-panel text-xs flex justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-bea-ink">{log.action}</p>
+                      <p className="text-bea-sage-muted">
+                        {log.actorName} · {log.entityType} {log.entityId ? `#${log.entityId.slice(0, 8)}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-bea-sage-muted shrink-0">
+                      {new Date(log.createdAt).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-bea-sage-muted text-xs py-4">Belum ada aktivitas tercatat.</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
         <div className={showTab(currentActiveTab, OVERVIEW_TAB, 'fill')}>
           <Card variant="flat" className="portal-card--fill">
             <div className="portal-toolbar">
@@ -249,6 +499,7 @@ function AdminDashboardContent() {
                 >
                   <option value="fullName">Nama Guru</option>
                   <option value="jobTitle">Jabatan</option>
+                  <option value="institutionName">Sekolah</option>
                   <option value="status">Status</option>
                 </select>
                 <button type="button" onClick={toggleSortDirection} className="portal-icon-btn" aria-label="Balik urutan">
@@ -278,99 +529,10 @@ function AdminDashboardContent() {
           </Card>
         </div>
 
-        <div className={`portal-page-grid portal-page-grid--2-1 ${showTab(currentActiveTab, 'Validasi Laporan & Kebijakan', 'fill-grid')}`}>
-          <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
-            <Card className="portal-card--fill border">
-              <h3 className="portal-section-title text-base mb-1">Persetujuan Laporan Kelas Honorer</h3>
-              <p className="portal-section-desc mb-3">Periksa keabsahan naratif pengajaran dan foto fisik KBM guru sebelum dipublikasikan di feed transparansi donatur.</p>
+        <AdminTermsTab />
 
-              <div className="portal-scroll-pane space-y-4">
-                {reportsWithDetails.filter(r => r.report.status === 'PENDING').length > 0 ? (
-                  reportsWithDetails.filter(r => r.report.status === 'PENDING').map((r, i) => (
-                    <div key={i} className="portal-inset-panel space-y-3">
-                      <div className="flex items-center gap-3 justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <img src={r.teacherPhoto} alt={r.teacherName} className="w-8 h-8 rounded-full object-cover border border-bea-line" />
-                          <div>
-                            <h4 className="font-bold text-xs text-bea-ink">{r.teacherName}</h4>
-                            <p className="text-[10px] text-bea-sage-muted">{r.jobTitle} &bull; {r.institutionName}</p>
-                          </div>
-                        </div>
-                        <span className="font-mono text-[9px] text-bea-sage-muted">
-                          {new Date(r.report.submittedAt).toLocaleDateString('id-ID')}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <p className="text-xs text-bea-sage italic whitespace-pre-wrap md:col-span-2 leading-relaxed">
-                          "{r.report.description}"
-                        </p>
-                        {r.report.photoUrl && (
-                          <img src={r.report.photoUrl} alt="KBM" className="w-full h-20 object-cover rounded-lg border border-bea-line md:col-span-1" />
-                        )}
-                      </div>
-
-                      <div className="flex justify-end gap-2 pt-2 border-t border-bea-line">
-                        <Button size="xs" variant="secondary" className="px-3 py-1 text-[10px]" onClick={() => handleReportDecision(r.report.id!, false)}>
-                          Tolak
-                        </Button>
-                        <Button size="xs" className="px-3 py-1 text-[10px]" onClick={() => handleReportDecision(r.report.id!, true)}>
-                          Setujui & Lumat Rilis
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-bea-sage-muted text-xs">
-                    <p className="font-bold uppercase tracking-wider text-[10px] text-bea-copper mb-1">Semua Laporan Bersih!</p>
-                    <p>Tidak ada laporan bulanan guru yang sedang menunggu persetujuan yayasan.</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card className="border shrink-0">
-              <h3 className="portal-section-title text-base mb-1">Arsip Laporan Kelas Terbit (Terverifikasi)</h3>
-              <p className="portal-section-desc mb-3">Laporan perkembangan belajar guru honorer yang telah divalidasi dan tersiar aktif demi memelihara akuntabilitas donasi.</p>
-
-              <div className="portal-scroll-pane max-h-40 space-y-2">
-                {reportsWithDetails.filter(r => r.report.status === 'APPROVED').length > 0 ? (
-                  reportsWithDetails.filter(r => r.report.status === 'APPROVED').map((r, i) => (
-                    <div key={i} className="portal-inset-panel p-2.5 flex items-center justify-between text-xs">
-                      <div className="flex gap-2.5 items-center">
-                        <img src={r.teacherPhoto} alt={r.teacherName} className="w-6 h-6 rounded-full object-cover border border-bea-line" />
-                        <div>
-                          <h4 className="font-bold text-bea-ink">{r.teacherName}</h4>
-                          <p className="text-bea-sage-muted text-[10px] line-clamp-1">{r.report.description}</p>
-                        </div>
-                      </div>
-                      <Badge variant="success">APPROVED</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center py-4 text-bea-sage-muted text-[11px]">Belum ada laporan bervaluasi disetujui.</p>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          <Card className="portal-card--fill border flex flex-col justify-between">
-            <div className="space-y-3 min-h-0 flex-1 flex flex-col overflow-hidden">
-              <h3 className="portal-section-title text-base shrink-0">Pengaturan Kebijakan (T&C)</h3>
-              <DraftStatusBanner isDirty={isTermsDirty} />
-              <textarea
-                value={termsDraft.text}
-                onChange={(e) => patchTerms({ text: e.target.value })}
-                rows={12}
-                className={`${beaTextarea} text-xs leading-normal flex-1 min-h-0 mb-4`}
-              />
-            </div>
-            <Button size="sm" onClick={handleSaveTerms} className="w-full py-2.5 text-xs uppercase tracking-wider font-bold shrink-0">
-              <ShieldCheck className="mr-1.5" size={14} />
-              Simpan & Publikasikan
-            </Button>
-          </Card>
-        </div>
+        <AdminAnalyticsTab />
+        <AdminLandingCmsTab />
       </div>
     </PortalShell>
   );

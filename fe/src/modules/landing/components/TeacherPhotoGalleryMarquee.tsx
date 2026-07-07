@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 
-const LOGO_SRC = '/brand/bea-guru-logo.png';
+import { LOGO_URL } from '@core/constants/mediaUrls';
+
+const LOGO_SRC = LOGO_URL;
 
 /** Satu putaran penuh daftar guru (detik) — semakin besar semakin pelan. */
 const MARQUEE_CYCLE_SECONDS = 600;

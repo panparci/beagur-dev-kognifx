@@ -34,6 +34,7 @@ export type DonationDraft = {
   amount: number | '';
   type: DonationType;
   teacherProfileId: string;
+  proofUrl: string;
 };
 
 export type AdminTermsDraft = {
@@ -73,6 +74,7 @@ export const EMPTY_DONATION_DRAFT: DonationDraft = {
   amount: '',
   type: DonationType.RECURRING,
   teacherProfileId: '',
+  proofUrl: '',
 };
 
 export const DEFAULT_ADMIN_TERMS =

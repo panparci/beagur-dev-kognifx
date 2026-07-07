@@ -4,6 +4,8 @@ import {
   Institution,
   TeacherProfile,
   Donation,
+  DonorSummary,
+  DonationType,
   MonthlyReport,
   CampaignProgress,
   ReportWithDetails,
@@ -11,6 +13,7 @@ import {
   AiMemory,
   AiLogEntry,
   LedgerEntry,
+  AdminAuditLog,
 } from '../types';
 
 /** Go nil-slice encodes as JSON null — normalize to [] for list endpoints */
@@ -54,6 +57,21 @@ export const institutionRepository = {
       name: r.name,
       role: r.role as User['role'],
     }));
+  },
+};
+
+export const donorRepository = {
+  async getAll(includeInactive = false): Promise<DonorSummary[]> {
+    const query = includeInactive ? '?includeInactive=true' : '';
+    return asList(await apiGet<DonorSummary[]>(`/api/v1/donors${query}`));
+  },
+
+  async save(donor: { id?: string; email: string; name: string; phone: string }): Promise<DonorSummary> {
+    return apiPost<DonorSummary>('/api/v1/donors', donor);
+  },
+
+  async deactivate(donorId: string): Promise<void> {
+    await apiPatch(`/api/v1/donors/${donorId}/deactivate`, {});
   },
 };
 
@@ -114,7 +132,29 @@ export const donationRepository = {
       amount: donation.amount,
       type: donation.type,
       teacherProfileId: donation.teacherProfileId,
+      proofUrl: donation.proofUrl,
     });
+  },
+
+  async verify(donationId: string, approve: boolean, invoiceNumber?: string): Promise<Donation> {
+    return apiPatch<Donation>(`/api/v1/donations/${donationId}/verification`, {
+      approve,
+      invoiceNumber: invoiceNumber ?? '',
+    });
+  },
+
+  async createInvoice(input: {
+    donorUserId: string;
+    amount: number;
+    type: DonationType;
+    teacherProfileId?: string;
+    invoiceNumber?: string;
+  }): Promise<Donation> {
+    return apiPost<Donation>('/api/v1/donations/invoice', input);
+  },
+
+  async disburse(input: { teacherProfileId: string; amount: number; description?: string }) {
+    return apiPost<LedgerEntry>('/api/v1/ledger/disburse', input);
   },
 
   async getByDonorUserId(_donorUserId: string): Promise<Donation[]> {
@@ -152,6 +192,12 @@ export const reportRepository = {
   },
 };
 
+export const auditRepository = {
+  async getRecent(): Promise<AdminAuditLog[]> {
+    return asList(await apiGet<AdminAuditLog[]>('/api/v1/admin/audit-logs'));
+  },
+};
+
 export const settingsRepository = {
   async getTerms(): Promise<string> {
     const data = await apiGet<{ value: string }>('/api/v1/settings/terms');
@@ -160,6 +206,16 @@ export const settingsRepository = {
 
   async saveTerms(value: string): Promise<string> {
     const data = await apiPut<{ value: string }>('/api/v1/settings/terms', { value });
+    return data.value;
+  },
+
+  async getLanding(): Promise<string> {
+    const data = await apiGet<{ value: string }>('/api/v1/settings/landing');
+    return data.value;
+  },
+
+  async saveLanding(value: string): Promise<string> {
+    const data = await apiPut<{ value: string }>('/api/v1/settings/landing', { value });
     return data.value;
   },
 };

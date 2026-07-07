@@ -40,9 +40,29 @@ function GallerySkeleton() {
   );
 }
 
-export function TeacherPhotoGallery() {
+export function TeacherPhotoGallery({
+  kicker = 'Guru penerima bantuan',
+  title = 'Wajah di garis depan pendidikan',
+  lead = 'Guru honorer terverifikasi yang masih mengajar setiap hari — profil dan foto langsung dari program Bea Guru.',
+  featuredTeacherIds = [],
+}: {
+  kicker?: string;
+  title?: string;
+  lead?: string;
+  featuredTeacherIds?: string[];
+}) {
   const { teachers, initialLoading, error } = usePublicTeachers();
-  const cards = useMemo(() => teachers.map(toCard), [teachers]);
+  const cards = useMemo(() => {
+    const all = teachers.map(toCard);
+    if (featuredTeacherIds.length === 0) return all;
+    const order = new Map(featuredTeacherIds.map((id, i) => [id, i]));
+    return [...all].sort((a, b) => {
+      const ai = order.get(a.id) ?? 9999;
+      const bi = order.get(b.id) ?? 9999;
+      if (ai !== bi) return ai - bi;
+      return a.name.localeCompare(b.name, 'id');
+    });
+  }, [teachers, featuredTeacherIds]);
 
   return (
     <section
@@ -52,14 +72,11 @@ export function TeacherPhotoGallery() {
     >
       <div className="landing-teachers-gallery__inner">
         <header className="landing-teachers-gallery__head">
-          <p className="landing-teachers-gallery__kicker">Guru penerima bantuan</p>
+          <p className="landing-teachers-gallery__kicker">{kicker}</p>
           <h2 id="landing-teachers-gallery-title" className="landing-teachers-gallery__title">
-            Wajah di garis depan pendidikan
+            {title}
           </h2>
-          <p className="landing-teachers-gallery__lead">
-            Guru honorer terverifikasi yang masih mengajar setiap hari — profil dan foto langsung
-            dari program Bea Guru.
-          </p>
+          <p className="landing-teachers-gallery__lead">{lead}</p>
         </header>
 
         {initialLoading ? <GallerySkeleton /> : null}

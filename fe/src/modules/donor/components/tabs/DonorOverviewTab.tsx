@@ -13,10 +13,11 @@ export function DonorOverviewTab() {
   const { activeTab: currentActiveTab } = usePortalNav();
   const {
     progress,
-    approvedTeachers,
+    sponsoredTeachers,
+    latestTestimonialByUserId,
     selectedTeacherIndex,
     setSelectedTeacherIndex,
-    currentTeacher,
+    currentSponsoredTeacher,
     openDonation,
     handleSponsorTeacher,
   } = useDonorDashboardContext();
@@ -97,14 +98,19 @@ export function DonorOverviewTab() {
 
         <Card className="portal-card--fill h-full flex flex-col">
           <div className="flex justify-between items-center gap-2 mb-3 shrink-0">
-            <h2 className={beaSectionTitle}>Daftar Guru Terverifikasi</h2>
-            {approvedTeachers.length > 1 && (
+            <div>
+              <h2 className={beaSectionTitle}>Profil Guru Binaan</h2>
+              <p className="text-[11px] text-bea-sage-muted mt-0.5">
+                Guru yang Anda dukung melalui donasi terverifikasi
+              </p>
+            </div>
+            {sponsoredTeachers.length > 1 && (
               <div className="portal-carousel-nav">
                 <button
                   type="button"
                   onClick={() =>
                     setSelectedTeacherIndex((prev) =>
-                      prev === 0 ? approvedTeachers.length - 1 : prev - 1,
+                      prev === 0 ? sponsoredTeachers.length - 1 : prev - 1,
                     )
                   }
                   className="portal-icon-btn"
@@ -113,13 +119,13 @@ export function DonorOverviewTab() {
                   &larr;
                 </button>
                 <span className="text-xs font-semibold text-bea-sage-muted tabular-nums">
-                  {selectedTeacherIndex + 1} / {approvedTeachers.length}
+                  {selectedTeacherIndex + 1} / {sponsoredTeachers.length}
                 </span>
                 <button
                   type="button"
                   onClick={() =>
                     setSelectedTeacherIndex((prev) =>
-                      prev === approvedTeachers.length - 1 ? 0 : prev + 1,
+                      prev === sponsoredTeachers.length - 1 ? 0 : prev + 1,
                     )
                   }
                   className="portal-icon-btn"
@@ -131,16 +137,21 @@ export function DonorOverviewTab() {
             )}
           </div>
           <div className="portal-scroll-pane flex-1 min-h-0">
-            {currentTeacher ? (
+            {currentSponsoredTeacher ? (
               <TeacherBeneficiaryCard
-                profile={currentTeacher.profile}
-                institutionName={currentTeacher.institutionName}
+                profile={currentSponsoredTeacher.profile}
+                institutionName={currentSponsoredTeacher.institutionName}
                 layout="featured"
+                testimonial={
+                  latestTestimonialByUserId.get(currentSponsoredTeacher.profile.userId) ||
+                  currentSponsoredTeacher.profile.reason
+                }
                 onSponsor={handleSponsorTeacher}
               />
             ) : (
-              <p className="text-center py-8 text-bea-sage-muted font-medium">
-                Belum ada profil guru yang disetujui yayasan saat ini.
+              <p className="text-center py-8 text-bea-sage-muted font-medium text-sm leading-relaxed">
+                Belum ada guru binaan. Pilih guru di tab Guru Penerima Bantuan lalu lakukan donasi
+                untuk melihat profil mereka di sini.
               </p>
             )}
           </div>

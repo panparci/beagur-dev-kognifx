@@ -392,10 +392,26 @@ func donationReceiptHTML(donorName, amount, donationType, teacherName, portalURL
 			{Label: "Nominal", Value: amount},
 			{Label: "Jenis", Value: donationType},
 			{Label: "Penerima", Value: target},
-			{Label: "Status", Value: "Tercatat"},
+			{Label: "Status", Value: "Terverifikasi"},
 		},
 		MessageHTML: `Terima kasih sudah mempercayakan Bea Guru. Dampak donasi dapat Anda pantau kapan saja di portal donatur.`,
 		CTALabel:    "Lihat Dampak Donasi",
+		CTAURL:      portalURL,
+		PortalURL:   portalURL,
+	})
+}
+
+func donationPendingHTML(donorName, amount, portalURL string) string {
+	return renderEmail(emailContent{
+		Headline:     "Donasi Kamu Sedang Diverifikasi",
+		Greeting:     greetingHi(donorName),
+		SectionTitle: "Status Donasi",
+		Rows: []detailRow{
+			{Label: "Nominal", Value: amount},
+			{Label: "Status", Value: "Menunggu verifikasi admin"},
+		},
+		MessageHTML: `Tim yayasan akan memverifikasi bukti transfer Anda. Setelah disetujui, donasi masuk ke ledger transparansi dan Anda akan menerima email konfirmasi.`,
+		CTALabel:    "Lihat Portal Donatur",
 		CTAURL:      portalURL,
 		PortalURL:   portalURL,
 	})

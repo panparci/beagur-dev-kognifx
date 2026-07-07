@@ -3,7 +3,7 @@ import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
 import { PortalSectionHead } from '@core/ui/portal/PortalPrimitives';
 import { showTab } from '@core/ui/tabPanel';
-import { DonationType } from '@core/types';
+import { DonationType, DonationVerificationStatus } from '@core/types';
 import { CheckCircle2, Download } from 'lucide-react';
 import { usePortalNav } from '@core/routing/usePortalNav';
 import { useDonorDashboardContext } from '../../context/DonorDashboardContext';
@@ -52,11 +52,17 @@ export function DonorHistoryTab() {
                         {d.type === DonationType.RECURRING ? 'Bulanan' : 'Sekali Waktu'}
                       </Badge>
                     </td>
-                    <td className="text-emerald-700 font-semibold uppercase tracking-wide text-[10px]">
-                      <span className="inline-flex items-center gap-1">
-                        <CheckCircle2 size={11} className="text-emerald-500" />
-                        Tercatat 100% Utuh
-                      </span>
+                    <td className="text-[10px] font-semibold uppercase tracking-wide">
+                      {d.verificationStatus === DonationVerificationStatus.VERIFIED ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700">
+                          <CheckCircle2 size={11} className="text-emerald-500" />
+                          Terverifikasi
+                        </span>
+                      ) : d.verificationStatus === DonationVerificationStatus.REJECTED ? (
+                        <span className="text-rose-600">Ditolak</span>
+                      ) : (
+                        <span className="text-amber-700">Menunggu verifikasi admin</span>
+                      )}
                     </td>
                   </tr>
                 ))
