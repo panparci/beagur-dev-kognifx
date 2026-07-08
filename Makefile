@@ -113,7 +113,7 @@ cleanup-except-admin:
 	cd $(BE_DIR) && $(MAKE) cleanup-except-admin
 
 reset-data: cleanup-except-admin
-	@echo "Data bisnis direset — hanya admin@bea-guru.dev yang tersisa."
+	@echo "Data bisnis direset — hanya beaguru07@gmail.com yang tersisa."
 
 sync-r2-static:
 	cd $(BE_DIR) && go run ./cmd/r2static

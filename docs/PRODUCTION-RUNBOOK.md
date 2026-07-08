@@ -55,5 +55,5 @@ BASE_URL=https://your-domain.com ./be/scripts/health-check-prod.sh
 ## Local dev data reset
 
 ```bash
-make cleanup-except-admin   # keeps admin@bea-guru.dev only
+make cleanup-except-admin   # keeps beaguru07@gmail.com only
 ```

@@ -8,7 +8,7 @@ import { auth, pool } from './auth.js';
 const DEMO_PASSWORD = 'BeaGuru123!';
 
 const DEMO_EMAILS = [
-  'admin@bea-guru.dev',
+  'beaguru07@gmail.com',
   'kepsek.sdn1@bea-guru.dev',
   'kepsek.smp2@bea-guru.dev',
   'kepsek.sma3@bea-guru.dev',

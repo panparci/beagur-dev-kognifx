@@ -10,10 +10,10 @@ export type DemoPersona = {
   hint: string;
 };
 
-/** Akun demo — sinkron dengan be/migrations/00007_auth_persona_emails.sql */
+/** Akun demo — sinkron dengan be/migrations persona emails. */
 export const DEMO_PERSONAS: DemoPersona[] = [
   {
-    email: 'admin@bea-guru.dev',
+    email: 'beaguru07@gmail.com',
     label: 'Admin Yayasan',
     role: UserRole.ADMIN,
     hint: 'Daftar sekolah, assign kepala sekolah, approve final guru',
@@ -73,7 +73,7 @@ export const LOGIN_FORM_SUGGESTIONS = [
   { id: 'guru', label: 'Guru Honorer', email: 'guru.a@bea-guru.dev' },
   { id: 'kepsek', label: 'Kepala Sekolah', email: 'kepsek.sdn1@bea-guru.dev' },
   { id: 'donor', label: 'Donatur', email: 'donor@bea-guru.dev' },
-  { id: 'admin', label: 'Admin Yayasan', email: 'admin@bea-guru.dev' },
+  { id: 'admin', label: 'Admin Yayasan', email: 'beaguru07@gmail.com' },
 ] as const;
 
 export const REGISTER_FORM_EXAMPLE = {

@@ -24,7 +24,7 @@ Permissions di-load dari `roles` → `role_permissions` → session (`/me`).
 ```
                     ┌─────────────────────┐
                     │   Admin Yayasan     │
-                    │ admin@bea-guru.dev  │
+                    │ beaguru07@gmail.com │
                     └──────────┬──────────┘
                                │ daftar sekolah + assign validator
          ┌─────────────────────┼─────────────────────┐
@@ -41,7 +41,7 @@ Permissions di-load dari `roles` → `role_permissions` → session (`/me`).
 
 | Email | Peran | Sekolah / cakupan | Status profil guru (jika TEACHER) |
 |-------|--------|-------------------|-----------------------------------|
-| `admin@bea-guru.dev` | Admin | Seluruh yayasan | — |
+| `beaguru07@gmail.com` | Admin | Seluruh yayasan | — |
 | `kepsek.sdn1@bea-guru.dev` | Validator | SDN 1 Harapan Bangsa | — |
 | `kepsek.smp2@bea-guru.dev` | Validator | SMP 2 Cita-Cita Luhur | — |
 | `kepsek.sma3@bea-guru.dev` | Validator | SMA 3 Tunas Muda | — |
