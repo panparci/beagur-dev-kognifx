@@ -51,12 +51,11 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    setAccessToken(null);
-    try {
-      await authClient.signOut();
-    } catch {
-      /* ignore */
+    const { error } = await authClient.signOut();
+    if (error) {
+      throw new Error(error.message ?? 'Gagal menghapus sesi. Coba lagi.');
     }
+    setAccessToken(null);
   },
 
   async restoreSession(): Promise<User | null> {

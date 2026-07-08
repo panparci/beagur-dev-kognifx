@@ -90,14 +90,9 @@ export function AuthProvider({ children, onLogout }: AuthProviderProps) {
     if (user?.id) {
       clearAllDraftsForUser(user.id);
     }
-    try {
-      await authService.logout();
-    } catch {
-      /* tetap keluar meski API gagal */
-    } finally {
-      setUser(null);
-      onLogout?.();
-    }
+    await authService.logout();
+    setUser(null);
+    onLogout?.();
   }, [user, onLogout]);
 
   const clearLoginError = useCallback(() => setLoginError(null), []);

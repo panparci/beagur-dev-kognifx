@@ -43,6 +43,10 @@ export const auth = betterAuth({
   baseURL: authBaseURL,
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
+  account: {
+    storeStateStrategy: 'database',
+    skipStateCookieCheck: true,
+  },
   emailAndPassword: {
     enabled: true,
   },

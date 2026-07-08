@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@modules/auth/hooks/useAuth';
+import { useToast } from '@core/ui/toast/ToastProvider';
 import { usePortalNav } from '@core/routing/usePortalNav';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import PortalLogo from './PortalLogo';
@@ -32,6 +33,10 @@ import {
   navMeta,
   PORTAL_NAV_GROUPS,
 } from '../routing/portalNavMeta';
+
+const LOGOUT_LOADING_MIN_MS = 900;
+
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -77,6 +82,7 @@ function groupNavLinks(links: NavLinkItem[], role: UserRole | undefined) {
 const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
   const user = useRequireUser();
   const { logout } = useAuth();
+  const toast = useToast();
   const { activeTab: currentActiveTab } = usePortalNav();
 
   const activeMeta = navMeta(currentActiveTab);
@@ -110,8 +116,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
     setIsLoggingOut(true);
     setIsProfileOpen(false);
     try {
+      await wait(LOGOUT_LOADING_MIN_MS);
       await logout();
-    } finally {
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Sesi belum berhasil dihapus. Coba lagi.',
+        'Logout gagal',
+      );
       setIsLoggingOut(false);
     }
   };
@@ -161,6 +172,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
 
   return (
     <div className="app-shell flex h-screen min-h-screen overflow-hidden font-portal">
+      {isLoggingOut ? (
+        <div className="portal-logout-overlay" role="status" aria-live="assertive" aria-label="Mengakhiri sesi">
+          <div className="portal-logout-loader" aria-hidden />
+          <p className="portal-logout-title">Mengakhiri sesi...</p>
+          <p className="portal-logout-copy">Mohon tunggu sebentar.</p>
+        </div>
+      ) : null}
+
       <aside className="portal-sidebar hidden shrink-0 flex-col md:flex">
         <div className="portal-sidebar-brand">
           <div className="portal-sidebar-logo-wrap">
