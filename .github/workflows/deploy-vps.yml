@@ -114,29 +114,29 @@ jobs:
               echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             fi
 
-            # Write .env.production using printf — escape % to avoid format spec issues
+            # Write .env.production using printf — no sed escaping needed for docker compose env files
             printf 'API_IMAGE=%s/api:%s\n' "${IMAGE_PREFIX}" "${COMMIT_SHA}" > .env.production
             printf 'AUTH_IMAGE=%s/auth:%s\n' "${IMAGE_PREFIX}" "${COMMIT_SHA}" >> .env.production
             printf 'WEB_IMAGE=%s/web:%s\n' "${IMAGE_PREFIX}" "${COMMIT_SHA}" >> .env.production
             printf 'WEB_PORT=%s\n' "${{ secrets.WEB_PORT }}" >> .env.production
             printf 'POSTGRES_DB=%s\n' "${{ secrets.POSTGRES_DB }}" >> .env.production
             printf 'POSTGRES_USER=%s\n' "${{ secrets.POSTGRES_USER }}" >> .env.production
-            printf 'POSTGRES_PASSWORD=%s\n' "${{ secrets.POSTGRES_PASSWORD }}" | sed 's/%/%%/g' >> .env.production
-            printf 'DATABASE_URL=%s\n' "${{ secrets.DATABASE_URL }}" | sed 's/%/%%/g' >> .env.production
+            printf 'POSTGRES_PASSWORD=%s\n' "${{ secrets.POSTGRES_PASSWORD }}" >> .env.production
+            printf 'DATABASE_URL=%s\n' "${{ secrets.DATABASE_URL }}" >> .env.production
             printf 'FRONTEND_URL=%s\n' "${{ secrets.FRONTEND_URL }}" >> .env.production
             printf 'ALLOWED_ORIGINS=%s\n' "${{ secrets.ALLOWED_ORIGINS }}" >> .env.production
-            printf 'BETTER_AUTH_URL=%s\n' "${{ secrets.BETTER_AUTH_URL }}" | sed 's/%/%%/g' >> .env.production
-            printf 'BETTER_AUTH_JWKS_URL=%s\n' "${{ secrets.BETTER_AUTH_JWKS_URL }}" | sed 's/%/%%/g' >> .env.production
-            printf 'BETTER_AUTH_SECRET=%s\n' "${{ secrets.BETTER_AUTH_SECRET }}" | sed 's/%/%%/g' >> .env.production
-            printf 'OPENROUTER_API_KEY=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" | sed 's/%/%%/g' >> .env.production
+            printf 'BETTER_AUTH_URL=%s\n' "${{ secrets.BETTER_AUTH_URL }}" >> .env.production
+            printf 'BETTER_AUTH_JWKS_URL=%s\n' "${{ secrets.BETTER_AUTH_JWKS_URL }}" >> .env.production
+            printf 'BETTER_AUTH_SECRET=%s\n' "${{ secrets.BETTER_AUTH_SECRET }}" >> .env.production
+            printf 'OPENROUTER_API_KEY=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" >> .env.production
             printf 'OPENROUTER_SITE_URL=%s\n' "${{ secrets.OPENROUTER_SITE_URL }}" >> .env.production
             printf 'AI_MODELS=%s\n' "${{ secrets.AI_MODELS }}" >> .env.production
             printf 'GOOGLE_CLIENT_ID=%s\n' "${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.production
-            printf 'GOOGLE_CLIENT_SECRET=%s\n' "${{ secrets.GOOGLE_CLIENT_SECRET }}" | sed 's/%/%%/g' >> .env.production
-            printf 'BREVO_API_KEY=%s\n' "${{ secrets.BREVO_API_KEY }}" | sed 's/%/%%/g' >> .env.production
+            printf 'GOOGLE_CLIENT_SECRET=%s\n' "${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.production
+            printf 'BREVO_API_KEY=%s\n' "${{ secrets.BREVO_API_KEY }}" >> .env.production
             printf 'EMAIL_FROM=%s\n' "${{ secrets.EMAIL_FROM }}" >> .env.production
             printf 'EMAIL_FROM_NAME=%s\n' "${{ secrets.EMAIL_FROM_NAME }}" >> .env.production
-            printf 'INTERNAL_NOTIFY_SECRET=%s\n' "${{ secrets.INTERNAL_NOTIFY_SECRET }}" | sed 's/%/%%/g' >> .env.production
+            printf 'INTERNAL_NOTIFY_SECRET=%s\n' "${{ secrets.INTERNAL_NOTIFY_SECRET }}" >> .env.production
             printf 'LOG_LEVEL=%s\n' "${{ secrets.LOG_LEVEL }}" >> .env.production
 
             docker compose --env-file .env.production -f docker-compose.prod.yml pull
