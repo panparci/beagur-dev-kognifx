@@ -102,6 +102,7 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             set -euo pipefail
+            umask 077
 
             IMAGE_PREFIX="${{ needs.build-and-push.outputs.image_prefix }}"
             COMMIT_SHA="${{ needs.build-and-push.outputs.commit_sha }}"
@@ -139,10 +140,42 @@ jobs:
             printf 'INTERNAL_NOTIFY_SECRET=%s\n' "${{ secrets.INTERNAL_NOTIFY_SECRET }}" >> .env.production
             printf 'LOG_LEVEL=%s\n' "${{ secrets.LOG_LEVEL }}" >> .env.production
 
-            docker compose --env-file .env.production -f docker-compose.prod.yml pull
-            docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+            dc() {
+              docker compose                 --env-file .env.production                 -f docker-compose.prod.yml                 "$@"
+            }
 
-            sleep 8
-            curl -sf "http://127.0.0.1:${WEB_PORT:-80}/healthz" || true
-            curl -sf "http://127.0.0.1:${WEB_PORT:-80}/readyz" || true
+            dc config -q
+            dc pull
+
+            dc up -d postgres
+            dc run --rm migrate
+
+            docker rm -f beaguru-migrate-1 2>/dev/null || true
+
+            dc up -d               --force-recreate               --remove-orphans               api auth web
+
+            WEB_PORT="${{ secrets.WEB_PORT }}"
+            WEB_PORT="${WEB_PORT:-3003}"
+
+            healthy=false
+
+            for attempt in $(seq 1 30); do
+              if curl -fsS                    "http://127.0.0.1:${WEB_PORT}/healthz"                    >/dev/null &&
+                 curl -fsS                    "http://127.0.0.1:${WEB_PORT}/readyz"                    >/dev/null; then
+                healthy=true
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$healthy" != "true" ]; then
+              echo "Deployment health check failed"
+              dc ps
+              dc logs --tail 100 api auth web
+              exit 1
+            fi
+
+            echo "Deployment health check passed"
+            dc ps
             docker image prune -f
