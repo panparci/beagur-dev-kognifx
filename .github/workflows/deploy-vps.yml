@@ -139,6 +139,11 @@ jobs:
             printf 'EMAIL_FROM_NAME=%s\n' "${{ secrets.EMAIL_FROM_NAME }}" >> .env.production
             printf 'INTERNAL_NOTIFY_SECRET=%s\n' "${{ secrets.INTERNAL_NOTIFY_SECRET }}" >> .env.production
             printf 'LOG_LEVEL=%s\n' "${{ secrets.LOG_LEVEL }}" >> .env.production
+            printf 'R2_ACCOUNT_ID=%s\n' "${{ secrets.R2_ACCOUNT_ID }}" >> .env.production
+            printf 'R2_ACCESS_KEY_ID=%s\n' "${{ secrets.R2_ACCESS_KEY_ID }}" >> .env.production
+            printf 'R2_SECRET_ACCESS_KEY=%s\n' "${{ secrets.R2_SECRET_ACCESS_KEY }}" >> .env.production
+            printf 'R2_BUCKET=%s\n' "${{ secrets.R2_BUCKET }}" >> .env.production
+            printf 'R2_PUBLIC_BASE_URL=%s\n' "${{ secrets.R2_PUBLIC_BASE_URL }}" >> .env.production
 
             dc() {
               docker compose                 --env-file .env.production                 -f docker-compose.prod.yml                 "$@"
