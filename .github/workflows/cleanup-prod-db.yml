@@ -42,14 +42,13 @@ jobs:
             ./be/scripts/cleanup-prod-keep-argha.sh
 
             echo "Post-cleanup users:"
-            DATABASE_URL="$(grep -E '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
-            DB_HOST="$(python3 -c "import re, os; m=re.search(r'@([^/?]+)', os.environ['DATABASE_URL']); print(m.group(1) if m else '')" DATABASE_URL="$DATABASE_URL")"
-            if [ "$DB_HOST" = "postgres" ]; then
+            if grep -q '^DATABASE_URL=.*@postgres' .env.production; then
               docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
-                psql -U "$(grep -E '^POSTGRES_USER=' .env.production | cut -d= -f2-)" \
-                -d "$(grep -E '^POSTGRES_DB=' .env.production | cut -d= -f2-)" \
+                psql -U "$(grep -E '^POSTGRES_USER=' .env.production | cut -d= -f2- | tr -d '\r')" \
+                -d "$(grep -E '^POSTGRES_DB=' .env.production | cut -d= -f2- | tr -d '\r')" \
                 -c "SELECT email, account_status FROM users ORDER BY email;"
             else
+              DATABASE_URL="$(grep -E '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
               docker run --rm -e DATABASE_URL="$DATABASE_URL" postgres:16-alpine \
                 psql "$DATABASE_URL" -c "SELECT email, account_status FROM users ORDER BY email;"
             fi
