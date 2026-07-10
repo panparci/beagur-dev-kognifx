@@ -1,0 +1,81 @@
+name: Production Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: VPS + DB + R2 audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+
+            echo "=== DOCKER PS ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml ps
+
+            WEB_PORT="$(grep -E '^WEB_PORT=' .env.production | cut -d= -f2- | tr -d '\r' || true)"
+            WEB_PORT="${WEB_PORT:-3003}"
+
+            echo "=== HEALTH (localhost:${WEB_PORT}) ==="
+            curl -sS -o /tmp/hz.json -w "healthz HTTP %{http_code}\n" "http://127.0.0.1:${WEB_PORT}/healthz" || true
+            cat /tmp/hz.json 2>/dev/null || true
+            echo
+            curl -sS -o /tmp/rz.json -w "readyz HTTP %{http_code}\n" "http://127.0.0.1:${WEB_PORT}/readyz" || true
+            cat /tmp/rz.json 2>/dev/null || true
+            echo
+
+            echo "=== API SMOKE ==="
+            curl -sS -o /tmp/me.json -w "GET /api/v1/me HTTP %{http_code}\n" "http://127.0.0.1:${WEB_PORT}/api/v1/me" || true
+            cat /tmp/me.json 2>/dev/null || true
+            echo
+
+            echo "=== AUTH SMOKE ==="
+            curl -sS -o /tmp/auth.json -w "GET /api/auth/ok HTTP %{http_code}\n" "http://127.0.0.1:${WEB_PORT}/api/auth/ok" || true
+            cat /tmp/auth.json 2>/dev/null || true
+            echo
+
+            echo "=== DB TABLES ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
+              psql -U "$(grep -E '^POSTGRES_USER=' .env.production | cut -d= -f2- | tr -d '\r')" \
+              -d "$(grep -E '^POSTGRES_DB=' .env.production | cut -d= -f2- | tr -d '\r')" \
+              -c "SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND relname IN ('users','analytics_monthly_snapshots','user','session','account','institutions') ORDER BY 1;"
+
+            echo "=== USERS ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres \
+              psql -U "$(grep -E '^POSTGRES_USER=' .env.production | cut -d= -f2- | tr -d '\r')" \
+              -d "$(grep -E '^POSTGRES_DB=' .env.production | cut -d= -f2- | tr -d '\r')" \
+              -c "SELECT email, account_status FROM users ORDER BY email;"
+
+            echo "=== MIGRATIONS ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate /app/migrate status 2>&1 | tail -8 || true
+
+            echo "=== R2 ENV (masked) ==="
+            grep -E '^R2_' .env.production | sed 's/=.*/=***/' || true
+
+            echo "=== RECENT API LOGS ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail 30 api 2>&1 || true
+
+            echo "=== RECENT AUTH LOGS ==="
+            docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail 20 auth 2>&1 || true
+
+            echo "=== FRONTEND_URL / ALLOWED_ORIGINS (host only) ==="
+            python3 - <<'PY'
+            import re
+            for key in ("FRONTEND_URL", "ALLOWED_ORIGINS", "BETTER_AUTH_URL"):
+                for line in open(".env.production"):
+                    if line.startswith(key + "="):
+                        val = line.split("=", 1)[1].strip()
+                        print(f"{key}={val}")
+            PY
