@@ -90,16 +90,16 @@ type ReportWithDetails struct {
 }
 
 type CampaignProgress struct {
-	Target                  int64 `json:"target"`
-	Raised                  int64 `json:"raised"`
-	Percentage              int   `json:"percentage"`
-	DonorCount              int64 `json:"donorCount"`
-	FundedTeachersCount     int64 `json:"fundedTeachersCount"`
-	PublishedTeachersCount  int64 `json:"publishedTeachersCount"`
-	TransferCount           int64 `json:"transferCount"`
-	PendingDonationsCount   int64 `json:"pendingDonationsCount"`
-	MonthlyTeacherTarget    int64 `json:"monthlyTeacherTarget"`
-	CurrentTeacherCount     int64 `json:"currentTeacherCount"`
+	Target                 int64 `json:"target"`
+	Raised                 int64 `json:"raised"`
+	Percentage             int   `json:"percentage"`
+	DonorCount             int64 `json:"donorCount"`
+	FundedTeachersCount    int64 `json:"fundedTeachersCount"`
+	PublishedTeachersCount int64 `json:"publishedTeachersCount"`
+	TransferCount          int64 `json:"transferCount"`
+	PendingDonationsCount  int64 `json:"pendingDonationsCount"`
+	MonthlyTeacherTarget   int64 `json:"monthlyTeacherTarget"`
+	CurrentTeacherCount    int64 `json:"currentTeacherCount"`
 }
 
 type ValidatorUser struct {
@@ -107,6 +107,15 @@ type ValidatorUser struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`
 	Role  string `json:"role"`
+}
+
+type PendingAccountApproval struct {
+	ID            string    `json:"id"`
+	Email         string    `json:"email"`
+	Name          string    `json:"name"`
+	Role          string    `json:"role"`
+	AccountStatus string    `json:"accountStatus"`
+	CreatedAt     time.Time `json:"createdAt"`
 }
 
 type Store struct {
@@ -254,7 +263,9 @@ func (s *Store) ListValidators(ctx context.Context) ([]ValidatorUser, error) {
 		FROM users u
 		JOIN user_roles ur ON ur.user_id = u.id
 		JOIN roles r ON r.id = ur.role_id
-		WHERE r.code = 'VALIDATOR' AND u.is_active = TRUE
+		WHERE r.code = 'VALIDATOR'
+		  AND u.is_active = TRUE
+		  AND u.account_status = 'ACTIVE'
 		ORDER BY u.name`)
 	if err != nil {
 		return nil, err

@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePendingAccountPoll } from '../hooks/usePendingAccountPoll';
 import { UserRole } from '@core/types';
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
-import { Clock, Mail } from 'lucide-react';
+import { Clock, LogOut, Mail } from 'lucide-react';
 import { portalPathForTab } from '@core/routing/tabRoutes';
 
 export function PendingVerificationPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   usePageMeta(PAGE_META.pendingVerification);
   usePendingAccountPoll(true);
 
   const isTeacher = user?.role === UserRole.TEACHER;
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div className="pending-verify-page">
@@ -32,16 +43,25 @@ export function PendingVerificationPage() {
           Notifikasi akan dikirim ke <strong>{user?.email}</strong> setelah akun aktif.
           Halaman ini juga mengecek status otomatis saat sinyal tersedia (tanpa perlu refresh manual).
         </p>
-        {isTeacher && (
-          <div className="pending-verify-actions">
+        <div className="pending-verify-actions">
+          {isTeacher && (
             <Link
               to={portalPathForTab('Pengajuan Profil')}
               className="ui-btn ui-btn--primary ui-btn--md inline-flex items-center justify-center no-underline"
             >
               Lengkapi / ubah profil
             </Link>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            className="ui-btn ui-btn--secondary ui-btn--md inline-flex items-center justify-center gap-2"
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+          >
+            <LogOut size={16} aria-hidden />
+            {isLoggingOut ? 'Keluar...' : 'Keluar'}
+          </button>
+        </div>
       </div>
     </div>
   );

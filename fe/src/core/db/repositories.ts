@@ -14,6 +14,7 @@ import {
   AiLogEntry,
   LedgerEntry,
   AdminAuditLog,
+  PendingAccountApproval,
 } from '../types';
 
 /** Go nil-slice encodes as JSON null — normalize to [] for list endpoints */
@@ -57,6 +58,16 @@ export const institutionRepository = {
       name: r.name,
       role: r.role as User['role'],
     }));
+  },
+};
+
+export const accountApprovalRepository = {
+  async getPending(): Promise<PendingAccountApproval[]> {
+    return asList(await apiGet<PendingAccountApproval[]>('/api/v1/account-approvals/pending'));
+  },
+
+  async decide(userId: string, approve: boolean): Promise<User> {
+    return apiPost<User>(`/api/v1/account-approvals/${userId}/decision?approve=${approve}`);
   },
 };
 

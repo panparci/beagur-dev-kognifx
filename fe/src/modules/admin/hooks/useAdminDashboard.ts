@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import { DEFAULT_ADMIN_TERMS } from '@core/draft/draftTypes';
 import { useDraftState, useUnsavedChangesGuard } from '@core/hooks/useDraftState';
-import { Institution, TeacherProfile, User, Donation, DonorSummary, DonationType, ApplicationStatus } from '@core/types';
+import { Institution, TeacherProfile, User, Donation, DonorSummary, DonationType, ApplicationStatus, PendingAccountApproval } from '@core/types';
 import { useToast } from '@core/ui/toast/ToastProvider';
 import { fundingService } from '@modules/funding/services/fundingService';
 import { institutionService } from '@modules/institutions/services/institutionService';
@@ -10,6 +10,7 @@ import { settingsService } from '@modules/settings/services/settingsService';
 import { teacherService } from '@modules/teachers/services/teacherService';
 import { donorService } from '@modules/donors/services/donorService';
 import { auditService } from '@modules/admin/services/auditService';
+import { accountApprovalService } from '@modules/admin/services/accountApprovalService';
 import { AdminAuditLog } from '@core/types';
 import { DEFAULT_LANDING_CONTENT, LandingContent } from '@core/constants/landingContent';
 
@@ -39,6 +40,7 @@ export function useAdminDashboard() {
 
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [validators, setValidators] = useState<User[]>([]);
+  const [pendingValidatorApprovals, setPendingValidatorApprovals] = useState<PendingAccountApproval[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<AdminApprovalItem[]>([]);
   const [allProfiles, setAllProfiles] = useState<TeacherProfile[]>([]);
   const [stats, setStats] = useState({
@@ -96,6 +98,9 @@ export function useAdminDashboard() {
 
     const valList = await institutionService.getValidators();
     setValidators(valList);
+
+    const pendingAccounts = await accountApprovalService.getPending();
+    setPendingValidatorApprovals(pendingAccounts);
 
     const approveQueue = await teacherService.getPendingApprovals();
     setPendingApprovals(approveQueue);
@@ -214,6 +219,19 @@ export function useAdminDashboard() {
       await loadAllAdminData();
     } catch {
       toast.error('Gagal menyalurkan persetujuan.');
+    }
+  };
+
+  const handleValidatorAccountDecision = async (userId: string, approve: boolean) => {
+    try {
+      await accountApprovalService.decide(userId, approve);
+      toast.success(
+        `Akun kepala sekolah ${approve ? 'disetujui' : 'ditolak'}.`,
+        'Persetujuan akun',
+      );
+      await loadAllAdminData();
+    } catch {
+      toast.error('Gagal memproses persetujuan akun kepala sekolah.');
     }
   };
 
@@ -425,6 +443,7 @@ export function useAdminDashboard() {
     user,
     institutions,
     validators,
+    pendingValidatorApprovals,
     pendingApprovals,
     stats,
     isModalOpen,
@@ -453,6 +472,7 @@ export function useAdminDashboard() {
     handleCloseModal,
     handleSaveInstitution,
     handleAdminDecision,
+    handleValidatorAccountDecision,
     handleSaveTerms,
     handleExportFinancials,
     toggleSortDirection,

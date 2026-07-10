@@ -42,15 +42,6 @@ func (h InstitutionHandler) Save(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	if h.Notify != nil && saved.ValidatorUserID != nil && *saved.ValidatorUserID != "" {
-		activated, actErr := h.Store.ActivatePendingUser(c.Request.Context(), *saved.ValidatorUserID)
-		if actErr == nil && activated {
-			contact, cErr := h.Store.GetUserContact(c.Request.Context(), *saved.ValidatorUserID)
-			if cErr == nil {
-				h.Notify.OnAccountActivated(contact.Email, contact.Name, "Kepala sekolah / validator")
-			}
-		}
-	}
 	response.OK(c, saved)
 }
 

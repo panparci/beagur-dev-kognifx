@@ -19,6 +19,12 @@ export interface User {
   accountStatus: AccountStatus;
 }
 
+export interface PendingAccountApproval extends User {
+  role: UserRole.VALIDATOR;
+  accountStatus: AccountStatus.PENDING_VERIFICATION;
+  createdAt: Date | string;
+}
+
 export interface Institution {
   id: string;
   name: string;

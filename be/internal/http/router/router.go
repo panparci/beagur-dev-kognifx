@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"strings"
 
-	authjwt "bea-guru-api/internal/auth"
 	"bea-guru-api/internal/ai"
+	authjwt "bea-guru-api/internal/auth"
 	"bea-guru-api/internal/config"
 	"bea-guru-api/internal/http/handler"
 	"bea-guru-api/internal/http/middleware"
@@ -58,7 +58,7 @@ func New(deps Dependencies) *gin.Engine {
 	}
 
 	healthHandler := handler.HealthHandler{DB: deps.DB, UploadDir: deps.Config.UploadDir}
-	userHandler := handler.UserHandler{}
+	userHandler := handler.UserHandler{Store: st, Notify: notifySvc}
 	authHandler := handler.AuthHandler{Store: st}
 	institutionHandler := handler.InstitutionHandler{Store: st, Notify: notifySvc}
 	teacherHandler := handler.TeacherHandler{Store: st, Notify: notifySvc}
@@ -68,11 +68,11 @@ func New(deps Dependencies) *gin.Engine {
 	campaignHandler := handler.NewCampaignHandler(st)
 	settingsHandler := handler.SettingsHandler{Store: st}
 	aiSvc := &ai.Service{
-		Store:       st,
-		APIKey:      deps.Config.OpenRouterAPIKey,
-		Models:      deps.Config.AIModels,
-		SiteURL:     deps.Config.OpenRouterSiteURL,
-		AppTitle:    deps.Config.AppName,
+		Store:    st,
+		APIKey:   deps.Config.OpenRouterAPIKey,
+		Models:   deps.Config.AIModels,
+		SiteURL:  deps.Config.OpenRouterSiteURL,
+		AppTitle: deps.Config.AppName,
 	}
 	aiHandler := handler.AiHandler{Store: st, AI: aiSvc}
 	ledgerHandler := handler.LedgerHandler{Store: st, Notify: notifySvc}
@@ -126,6 +126,8 @@ func New(deps Dependencies) *gin.Engine {
 	auth := v1.Group("", requireUser)
 	{
 		auth.POST("/onboarding/choose-role", onboardingHandler.ChooseRole)
+		auth.GET("/account-approvals/pending", perm("settings:write"), userHandler.PendingApprovals)
+		auth.POST("/account-approvals/:id/decision", perm("settings:write"), userHandler.DecidePendingApproval)
 		auth.GET("/institutions", perm("institutions:read"), institutionHandler.List)
 		auth.POST("/institutions", perm("institutions:write"), institutionHandler.Save)
 		auth.GET("/validators", perm("institutions:write"), institutionHandler.ListValidators)

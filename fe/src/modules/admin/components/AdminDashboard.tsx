@@ -12,7 +12,7 @@ import ManageInstitutionModal from '@modules/institutions/components/ManageInsti
 import ManageDonorModal from '@modules/donors/components/ManageDonorModal';
 import { DonationVerificationStatus } from '@core/types';
 import { openAuthenticatedFile } from '@core/api/axiosClient';
-import { PlusCircle, Edit, Download, TrendingUp, TrendingDown, ClipboardCheck, ArrowUpDown } from 'lucide-react';
+import { PlusCircle, Edit, Download, TrendingUp, TrendingDown, ClipboardCheck, ArrowUpDown, ShieldCheck } from 'lucide-react';
 import { OVERVIEW_TAB } from '@core/constants/tabs';
 import { showTab } from '@core/ui/tabPanel';
 import { beaFieldLabel, beaInput } from '@core/ui/beaTheme';
@@ -31,6 +31,7 @@ function AdminDashboardContent() {
     user,
     institutions,
     validators,
+    pendingValidatorApprovals,
     pendingApprovals,
     stats,
     isModalOpen,
@@ -51,6 +52,7 @@ function AdminDashboardContent() {
     handleCloseModal,
     handleSaveInstitution,
     handleAdminDecision,
+    handleValidatorAccountDecision,
     handleExportFinancials,
     toggleSortDirection,
     donors,
@@ -233,6 +235,40 @@ function AdminDashboardContent() {
       </div>
 
       <div className="portal-page-body">
+        {pendingValidatorApprovals.length > 0 && (
+          <div className={showTab(currentActiveTab, OVERVIEW_TAB)}>
+            <Card>
+              <PortalSectionHead
+                icon={ShieldCheck}
+                title="Persetujuan Kepala Sekolah"
+                description="Akun validator baru harus disetujui Admin Yayasan sebelum bisa ditugaskan ke sekolah."
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1">
+                {pendingValidatorApprovals.map((item) => (
+                  <div key={item.id} className="portal-list-item">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-bea-ink truncate">{item.name}</p>
+                      <p className="text-[11px] text-bea-sage font-semibold truncate">{item.email}</p>
+                      <p className="text-[11px] text-bea-sage">
+                        Daftar {new Date(item.createdAt).toLocaleDateString('id-ID')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="danger" size="sm" onClick={() => handleValidatorAccountDecision(item.id, false)}>
+                        Tolak
+                      </Button>
+                      <Button variant="success" size="sm" onClick={() => handleValidatorAccountDecision(item.id, true)}>
+                        Setujui
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
         {pendingApprovals.length > 0 && (
           <div className={showTab(currentActiveTab, OVERVIEW_TAB)}>
             <Card>
