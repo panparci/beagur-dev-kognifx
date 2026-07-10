@@ -44,6 +44,10 @@ function mapAxiosError(err: unknown): Error {
   if (!axiosErr.response) {
     return new Error('Tidak bisa terhubung ke server. Periksa sinyal internet lalu coba lagi.');
   }
+  const status = axiosErr.response.status;
+  if (status === 502 || status === 503 || status === 504) {
+    return new Error('Server sementara tidak tersedia. Tunggu sebentar lalu coba lagi.');
+  }
   const message = axiosErr.response.data?.error?.message;
   if (message) {
     return new Error(message);

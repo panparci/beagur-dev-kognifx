@@ -70,7 +70,26 @@ jobs:
             echo "=== RECENT AUTH LOGS ==="
             docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail 20 auth 2>&1 || true
 
-            echo "=== FRONTEND_URL / ALLOWED_ORIGINS (host only) ==="
+            echo "=== EXTERNAL HEALTH (public URL) ==="
+            FRONTEND_URL="$(grep -E '^FRONTEND_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
+            if [ -n "$FRONTEND_URL" ]; then
+              curl -sS -o /tmp/ext-hz.json -w "ext healthz HTTP %{http_code}\n" "${FRONTEND_URL}/healthz" || true
+              curl -sS -o /tmp/ext-rz.json -w "ext readyz HTTP %{http_code}\n" "${FRONTEND_URL}/readyz" || true
+              cat /tmp/ext-hz.json 2>/dev/null || true
+              echo
+              cat /tmp/ext-rz.json 2>/dev/null || true
+              echo
+            fi
+
+            echo "=== R2 CDN SMOKE ==="
+            R2_PUBLIC="$(grep -E '^R2_PUBLIC_BASE_URL=' .env.production | cut -d= -f2- | tr -d '\r' || true)"
+            if [ -n "$R2_PUBLIC" ]; then
+              curl -sS -o /dev/null -w "R2 logo HTTP %{http_code}\n" --max-time 15 "${R2_PUBLIC%/}/static/brand/bea-guru-logo.webp" || true
+            else
+              echo "R2_PUBLIC_BASE_URL not set"
+            fi
+
+            echo "=== FRONTEND_URL / ALLOWED_ORIGINS ==="
             python3 - <<'PY'
             import re
             for key in ("FRONTEND_URL", "ALLOWED_ORIGINS", "BETTER_AUTH_URL"):

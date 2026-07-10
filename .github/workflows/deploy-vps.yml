@@ -136,7 +136,14 @@ jobs:
             printf 'POSTGRES_PASSWORD=%s\n' "${{ secrets.POSTGRES_PASSWORD }}" >> .env.production
             printf 'DATABASE_URL=%s\n' "${{ secrets.DATABASE_URL }}" >> .env.production
             printf 'FRONTEND_URL=%s\n' "${{ secrets.FRONTEND_URL }}" >> .env.production
-            printf 'ALLOWED_ORIGINS=%s\n' "${{ secrets.ALLOWED_ORIGINS }}" >> .env.production
+            ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}"
+            FRONTEND_HOST="${{ secrets.FRONTEND_URL }}"
+            FRONTEND_HOST="${FRONTEND_HOST#https://}"
+            FRONTEND_HOST="${FRONTEND_HOST#http://}"
+            if [ -n "$FRONTEND_HOST" ]; then
+              ALLOWED_ORIGINS="${ALLOWED_ORIGINS},https://www.${FRONTEND_HOST}"
+            fi
+            printf 'ALLOWED_ORIGINS=%s\n' "${ALLOWED_ORIGINS}" >> .env.production
             printf 'BETTER_AUTH_URL=%s\n' "${{ secrets.BETTER_AUTH_URL }}" >> .env.production
             printf 'BETTER_AUTH_JWKS_URL=%s\n' "${{ secrets.BETTER_AUTH_JWKS_URL }}" >> .env.production
             printf 'BETTER_AUTH_SECRET=%s\n' "${{ secrets.BETTER_AUTH_SECRET }}" >> .env.production
