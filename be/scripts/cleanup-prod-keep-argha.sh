@@ -31,6 +31,8 @@ print(m.group(1) if m else "")
 PY
 )"
 
+DB_HOST="${DB_HOST%%:*}"
+
 dc() {
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
