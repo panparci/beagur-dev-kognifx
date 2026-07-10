@@ -4,7 +4,7 @@ APP_NAME := bea-guru-api
 export
 
 .PHONY: run build test tidy sqlc db-ping migrate-up migrate-down migrate-status \
-	seed-scale seed-scale-visible cleanup-scale cleanup-except-admin sync-r2-static
+	seed-scale seed-scale-visible cleanup-scale cleanup-except-admin cleanup-prod-keep-argha sync-r2-static
 
 run:
 	go run ./cmd/api
@@ -51,6 +51,11 @@ cleanup-scale:
 cleanup-except-admin:
 	$(MAKE) db-ping
 	psql "$$DATABASE_URL" -f scripts/cleanup-all-except-admin.sql
+
+cleanup-prod-keep-argha:
+	@if [ "$$CONFIRM_CLEANUP" != "YES" ]; then echo "Set CONFIRM_CLEANUP=YES"; exit 1; fi
+	$(MAKE) db-ping
+	psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/cleanup-all-except-admin-and-argha.sql
 
 sync-r2-static:
 	go run ./cmd/r2static

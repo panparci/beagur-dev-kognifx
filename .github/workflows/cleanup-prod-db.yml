@@ -1,0 +1,47 @@
+name: Cleanup Production DB
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type YES to hard-delete all data except Admin + Argha'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Hard cleanup (keep Admin + Argha)
+    runs-on: ubuntu-latest
+    if: inputs.confirm == 'YES'
+    steps:
+      - name: Cleanup over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_DEPLOY_PATH }}"
+
+            if [ ! -f .env.production ]; then
+              echo "Missing .env.production on VPS"
+              exit 1
+            fi
+
+            git fetch origin main
+            git reset --hard origin/main
+            chmod +x be/scripts/cleanup-prod-keep-argha.sh
+
+            CONFIRM_CLEANUP=YES \
+            ENV_FILE=.env.production \
+            ./be/scripts/cleanup-prod-keep-argha.sh
+
+            echo "Post-cleanup user count:"
+            DATABASE_URL="$(grep -E '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
+            docker run --rm -e DATABASE_URL="$DATABASE_URL" postgres:16-alpine \
+              psql "$DATABASE_URL" -c "SELECT email, account_status FROM users ORDER BY email;"

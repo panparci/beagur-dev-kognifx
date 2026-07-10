@@ -1,8 +1,8 @@
--- Hapus data bisnis & akun pengguna kecuali Admin Yayasan dan Pak Arga.
+-- Hard delete semua data bisnis + user, schema tetap utuh.
 --
 -- Dipertahankan:
--- - Admin app user: 11111111-1111-1111-1111-111111111101
--- - App/Better Auth user dengan email: argha.jkk@gmail.com
+-- - Admin Yayasan: beaguru07@gmail.com (id 11111111-1111-1111-1111-111111111101)
+-- - Pak Arga: argha.jkk@gmail.com
 -- - roles, permissions, program_settings, rag_documents, jwks, goose migrations
 
 BEGIN;
@@ -37,20 +37,12 @@ DELETE FROM verification;
 DELETE FROM session;
 DELETE FROM account
 WHERE "userId" NOT IN (
-  SELECT id FROM "user" WHERE LOWER(email) IN (
-    SELECT LOWER(email) FROM users
-    WHERE id = '11111111-1111-1111-1111-111111111101'::uuid
-       OR LOWER(email) = 'argha.jkk@gmail.com'
-  )
+  SELECT ba.id FROM "user" ba
+  WHERE LOWER(ba.email) IN ('beaguru07@gmail.com', 'argha.jkk@gmail.com')
 );
 
 DELETE FROM "user" ba
-WHERE LOWER(ba.email) NOT IN (
-  SELECT LOWER(email) FROM users
-  WHERE id = '11111111-1111-1111-1111-111111111101'::uuid
-     OR LOWER(email) = 'argha.jkk@gmail.com'
-)
-AND LOWER(ba.email) <> 'argha.jkk@gmail.com';
+WHERE LOWER(ba.email) NOT IN ('beaguru07@gmail.com', 'argha.jkk@gmail.com');
 
 DELETE FROM users
 WHERE id <> '11111111-1111-1111-1111-111111111101'::uuid
