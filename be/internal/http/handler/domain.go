@@ -54,6 +54,72 @@ func (h InstitutionHandler) ListValidators(c *gin.Context) {
 	response.OK(c, items)
 }
 
+func (h InstitutionHandler) MeInstitution(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	if current.Role != user.RoleValidator {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "validator only")
+		return
+	}
+	if current.AccountStatus != user.AccountStatusActive {
+		response.Error(c, http.StatusForbidden, "NOT_ACTIVE", "akun belum aktif")
+		return
+	}
+	inst, err := h.Store.GetInstitutionByValidatorUserID(c.Request.Context(), current.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "institusi belum didaftarkan")
+		return
+	}
+	if err != nil {
+		response.Error(c, http.StatusServiceUnavailable, "DB_ERROR", err.Error())
+		return
+	}
+	response.OK(c, inst)
+}
+
+func (h InstitutionHandler) SetupMeInstitution(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	if current.Role != user.RoleValidator {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "validator only")
+		return
+	}
+	if current.AccountStatus != user.AccountStatusActive {
+		response.Error(c, http.StatusForbidden, "NOT_ACTIVE", "akun belum aktif")
+		return
+	}
+
+	var body struct {
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+
+	inst, err := h.Store.CreateValidatorInstitution(c.Request.Context(), current.ID, body.Name, body.Address)
+	if errors.Is(err, store.ErrInvalidState) {
+		response.Error(c, http.StatusConflict, "ALREADY_EXISTS", "institusi sudah terdaftar")
+		return
+	}
+	if errors.Is(err, store.ErrForbidden) {
+		response.Error(c, http.StatusForbidden, "NOT_ACTIVE", "akun belum aktif")
+		return
+	}
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	response.OK(c, inst)
+}
+
 type TeacherHandler struct {
 	Store  *store.Store
 	Notify *notify.Service

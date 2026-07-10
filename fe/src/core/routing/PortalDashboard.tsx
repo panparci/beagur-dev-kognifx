@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { UserRole } from '@core/types';
+import { ValidatorPortalGate } from '@modules/validator/components/ValidatorPortalGate';
 
 const AdminDashboard = lazy(() => import('@modules/admin/components/AdminDashboard'));
 const TeacherDashboard = lazy(() => import('@modules/teacher/components/TeacherDashboard'));
@@ -33,6 +34,16 @@ const PortalDashboard: React.FC<{ role: UserRole }> = ({ role }) => {
       break;
     default:
       return null;
+  }
+
+  if (role === UserRole.VALIDATOR) {
+    return (
+      <ValidatorPortalGate>
+        <Suspense fallback={<DashboardFallback />}>
+          <Dashboard />
+        </Suspense>
+      </ValidatorPortalGate>
+    );
   }
 
   return (

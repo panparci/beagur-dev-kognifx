@@ -30,6 +30,10 @@ func (h HealthHandler) Ready(c *gin.Context) {
 		response.Error(c, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "Database is not ready")
 		return
 	}
+	if err := db.SchemaReady(c.Request.Context(), h.DB); err != nil {
+		response.Error(c, http.StatusServiceUnavailable, "SCHEMA_INCOMPLETE", err.Error())
+		return
+	}
 	if h.UploadDir != "" {
 		test := filepath.Join(h.UploadDir, ".readyz")
 		if err := os.WriteFile(test, []byte("1"), 0o644); err != nil {

@@ -131,6 +131,8 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/institutions", perm("institutions:read"), institutionHandler.List)
 		auth.POST("/institutions", perm("institutions:write"), institutionHandler.Save)
 		auth.GET("/validators", perm("institutions:write"), institutionHandler.ListValidators)
+		auth.GET("/validators/me/institution", perm("teachers:validate"), institutionHandler.MeInstitution)
+		auth.POST("/validators/me/institution", perm("teachers:validate"), institutionHandler.SetupMeInstitution)
 
 		auth.GET("/teachers", perm("donations:read"), teacherHandler.List)
 		auth.GET("/teachers/me", perm("teachers:write"), teacherHandler.Me)

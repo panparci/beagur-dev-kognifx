@@ -12,8 +12,13 @@ export function useAdminAnalytics(active: boolean) {
     setError(null);
     try {
       setData(await adminAnalyticsService.getMonthly(12));
-    } catch {
-      setError('Gagal memuat analitik program.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      setError(
+        message && message !== 'Permintaan API gagal'
+          ? `Gagal memuat analitik program: ${message}`
+          : 'Gagal memuat analitik program. Pastikan migrasi database sudah dijalankan.',
+      );
     } finally {
       setLoading(false);
     }
