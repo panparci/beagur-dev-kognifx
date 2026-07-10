@@ -20,3 +20,4 @@ be/bin/
 tmp/
 coverage/
 *.log
+fe/.env.local
