@@ -315,6 +315,13 @@ const TeacherDashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-3 lg:gap-3 text-sm">
         <div className={`space-y-2 ${isProfileTab ? 'block' : 'hidden'} ${isOverview ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
           <BusinessFlowBar variant="teacher" status={profile?.status} />
+          {profile?.status === ApplicationStatus.SUSPENDED ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              Akun Anda nonaktif sementara
+              {profile.suspendedReason ? `: ${profile.suspendedReason}` : ''}. Laporan bulanan dan
+              penyaluran donatur ditangguhkan sampai Kepala Sekolah mengaktifkan kembali.
+            </div>
+          ) : null}
           {pageLoading ? null : profile && !isEditing ? (
             <Card>
               <div className="portal-profile-hero">

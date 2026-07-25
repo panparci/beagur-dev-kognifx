@@ -8,6 +8,7 @@ export function applicationStatusVariant(status?: ApplicationStatus): StatusBadg
     case ApplicationStatus.APPROVED:
       return 'success';
     case ApplicationStatus.REJECTED:
+    case ApplicationStatus.SUSPENDED:
       return 'danger';
     case ApplicationStatus.PENDING_APPROVAL:
       return 'info';
@@ -35,6 +36,8 @@ export function applicationStatusLabel(
         return 'Divalidasi Kepsek, Menunggu Approval Yayasan';
       case ApplicationStatus.REJECTED:
         return 'Ditolak / Perlu Perbaikan';
+      case ApplicationStatus.SUSPENDED:
+        return 'Nonaktif Sementara';
       default:
         return 'Tidak Aktif';
     }
@@ -44,6 +47,8 @@ export function applicationStatusLabel(
     switch (status) {
       case ApplicationStatus.APPROVED:
         return 'Diterima Final (Yayasan)';
+      case ApplicationStatus.SUSPENDED:
+        return 'Nonaktif Sementara';
       case ApplicationStatus.REJECTED:
         if (rejectedBy === 'VALIDATOR') return 'Ditolak Kepala Sekolah';
         if (rejectedBy === 'ADMIN') return 'Ditolak Yayasan';
@@ -62,6 +67,8 @@ export function applicationStatusLabel(
       return 'Disetujui';
     case ApplicationStatus.REJECTED:
       return 'Ditolak';
+    case ApplicationStatus.SUSPENDED:
+      return 'Nonaktif';
     case ApplicationStatus.PENDING_APPROVAL:
       return 'Menunggu Yayasan';
     case ApplicationStatus.PENDING_VALIDATION:

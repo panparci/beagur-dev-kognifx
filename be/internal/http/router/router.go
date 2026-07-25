@@ -145,6 +145,8 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/teachers/pending-validation", perm("teachers:validate"), teacherHandler.PendingValidation)
 		auth.GET("/teachers/validation-history", perm("teachers:validate"), teacherHandler.ValidationHistory)
 		auth.POST("/teachers/:id/validate", perm("teachers:validate"), teacherHandler.Validate)
+		auth.POST("/teachers/:id/suspend", perm("teachers:validate"), teacherHandler.Suspend)
+		auth.POST("/teachers/:id/reactivate", perm("teachers:validate"), teacherHandler.Reactivate)
 		auth.GET("/teachers/pending-approval", perm("reports:approve"), teacherHandler.PendingApproval)
 		auth.POST("/teachers/:id/approve", perm("reports:approve"), teacherHandler.Approve)
 

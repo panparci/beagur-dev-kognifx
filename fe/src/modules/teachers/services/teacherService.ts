@@ -55,6 +55,14 @@ export const teacherService = {
     return teacherRepository.approve(profileId, approve);
   },
 
+  async suspendTeacher(profileId: string, reason: string): Promise<TeacherProfile> {
+    return teacherRepository.suspend(profileId, reason);
+  },
+
+  async reactivateTeacher(profileId: string): Promise<TeacherProfile> {
+    return teacherRepository.reactivate(profileId);
+  },
+
   async getAllReportsWithDetails(): Promise<ReportWithDetails[]> {
     return reportRepository.getWithDetails(false);
   },

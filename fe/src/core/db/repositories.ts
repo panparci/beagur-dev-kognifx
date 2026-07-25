@@ -131,6 +131,14 @@ export const teacherRepository = {
   async approve(profileId: string, approve: boolean): Promise<TeacherProfile> {
     return apiPost<TeacherProfile>(`/api/v1/teachers/${profileId}/approve?approve=${approve}`);
   },
+
+  async suspend(profileId: string, reason: string): Promise<TeacherProfile> {
+    return apiPost<TeacherProfile>(`/api/v1/teachers/${profileId}/suspend`, { reason });
+  },
+
+  async reactivate(profileId: string): Promise<TeacherProfile> {
+    return apiPost<TeacherProfile>(`/api/v1/teachers/${profileId}/reactivate`, {});
+  },
 };
 
 export const donationRepository = {

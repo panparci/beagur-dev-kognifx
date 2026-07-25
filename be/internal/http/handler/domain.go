@@ -321,6 +321,70 @@ func (h TeacherHandler) Approve(c *gin.Context) {
 	response.OK(c, items[0])
 }
 
+func (h TeacherHandler) Suspend(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&body)
+	asAdmin := current.Role == user.RoleAdmin
+	if !asAdmin && current.Role != user.RoleValidator {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "validator or admin only")
+		return
+	}
+	saved, err := h.Store.SuspendTeacher(c.Request.Context(), c.Param("id"), current.ID, body.Reason, asAdmin)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "teacher not found")
+			return
+		}
+		if errors.Is(err, store.ErrInvalidState) {
+			response.Error(c, http.StatusConflict, "INVALID_STATE", err.Error())
+			return
+		}
+		if errors.Is(err, store.ErrForbidden) {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "bukan guru di sekolah Anda")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	items := h.maskTeachers([]store.TeacherProfile{saved}, current)
+	response.OK(c, items[0])
+}
+
+func (h TeacherHandler) Reactivate(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	asAdmin := current.Role == user.RoleAdmin
+	if !asAdmin && current.Role != user.RoleValidator {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "validator or admin only")
+		return
+	}
+	saved, err := h.Store.ReactivateTeacher(c.Request.Context(), c.Param("id"), current.ID, asAdmin)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "teacher not found")
+			return
+		}
+		if errors.Is(err, store.ErrInvalidState) {
+			response.Error(c, http.StatusConflict, "INVALID_STATE", "hanya guru nonaktif yang dapat diaktifkan kembali")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	items := h.maskTeachers([]store.TeacherProfile{saved}, current)
+	response.OK(c, items[0])
+}
+
 func (h TeacherHandler) Approved(c *gin.Context) {
 	current, _ := middleware.CurrentUser(c)
 	items, err := h.Store.ListApprovedTeachers(c.Request.Context())

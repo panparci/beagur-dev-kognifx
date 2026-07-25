@@ -37,6 +37,7 @@ export enum ApplicationStatus {
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+  SUSPENDED = 'SUSPENDED',
 }
 
 export interface TeacherProfile {
@@ -63,6 +64,9 @@ export interface TeacherProfile {
   status: ApplicationStatus;
   rejectedBy?: 'VALIDATOR' | 'ADMIN' | null;
   isPublished?: boolean;
+  suspendedAt?: string | null;
+  suspendedReason?: string;
+  suspendedByUserId?: string | null;
   createdAt: Date | string;
   updatedAt?: Date | string;
 }

@@ -51,6 +51,9 @@ type TeacherProfile struct {
 	Status              string    `json:"status"`
 	RejectedBy          *string   `json:"rejectedBy,omitempty"`
 	IsPublished         bool      `json:"isPublished"`
+	SuspendedAt         *time.Time `json:"suspendedAt,omitempty"`
+	SuspendedReason     string     `json:"suspendedReason,omitempty"`
+	SuspendedByUserID   *string    `json:"suspendedByUserId,omitempty"`
 	CreatedAt           time.Time `json:"createdAt"`
 	UpdatedAt           time.Time `json:"updatedAt"`
 }
@@ -163,6 +166,9 @@ SELECT
     tp.status::text,
     tp.rejected_by,
     tp.is_published,
+    tp.suspended_at,
+    COALESCE(tp.suspended_reason, ''),
+    tp.suspended_by_user_id::text,
     tp.created_at,
     tp.updated_at
 FROM teacher_profiles tp
@@ -171,15 +177,25 @@ LEFT JOIN institutions i ON i.id = tp.institution_id
 
 func scanTeacher(row pgx.Row) (TeacherProfile, error) {
 	var t TeacherProfile
+	var suspendedAt *time.Time
+	var suspendedBy *string
 	err := row.Scan(
 		&t.ID, &t.UserID, &t.InstitutionID, &t.InstitutionName,
 		&t.FullName, &t.PhotoURL, &t.TeachingPhotoURL, &t.JobTitle,
 		&t.YearsOfService, &t.Age, &t.MonthlySalary, &t.PhoneNumber,
 		&t.BankName, &t.BankAccountNumber, &t.TotalReceivedCount,
 		&t.TotalReceivedAmount, &t.Region, &t.Latitude, &t.Longitude, &t.Reason, &t.Status,
-		&t.RejectedBy, &t.IsPublished, &t.CreatedAt, &t.UpdatedAt,
+		&t.RejectedBy, &t.IsPublished, &suspendedAt, &t.SuspendedReason, &suspendedBy,
+		&t.CreatedAt, &t.UpdatedAt,
 	)
-	return t, err
+	if err != nil {
+		return t, err
+	}
+	t.SuspendedAt = suspendedAt
+	if suspendedBy != nil && *suspendedBy != "" {
+		t.SuspendedByUserID = suspendedBy
+	}
+	return t, nil
 }
 
 func (s *Store) ListInstitutions(ctx context.Context) ([]Institution, error) {
@@ -516,6 +532,134 @@ func (s *Store) AdminApprovalDecision(ctx context.Context, profileID string, app
 		return profile, nil
 	}
 	return s.GetTeacherByID(ctx, profileID)
+}
+
+// SuspendTeacher sets APPROVED → SUSPENDED and notifies donors who sponsored this teacher.
+func (s *Store) SuspendTeacher(ctx context.Context, profileID, actorUserID, reason string, asAdmin bool) (TeacherProfile, error) {
+	if err := s.requireDB(); err != nil {
+		return TeacherProfile{}, err
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return TeacherProfile{}, fmt.Errorf("%w: alasan nonaktif wajib diisi", ErrInvalidState)
+	}
+	tid, err := parseUUID(profileID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+	aid, err := parseUUID(actorUserID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+
+	q := `
+		UPDATE teacher_profiles tp
+		SET status = 'SUSPENDED'::application_status,
+		    is_published = FALSE,
+		    suspended_at = NOW(),
+		    suspended_reason = $3,
+		    suspended_by_user_id = $2
+		WHERE tp.id = $1 AND tp.status = 'APPROVED'`
+	args := []any{tid, aid, reason}
+	if !asAdmin {
+		q += ` AND tp.institution_id IN (SELECT id FROM institutions WHERE validator_user_id = $2)`
+	}
+	tag, err := s.pool.Exec(ctx, q, args...)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := s.GetTeacherByID(ctx, profileID); errors.Is(err, ErrNotFound) {
+			return TeacherProfile{}, ErrNotFound
+		}
+		return TeacherProfile{}, ErrInvalidState
+	}
+
+	profile, err := s.GetTeacherByID(ctx, profileID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT donor_user_id::text
+		FROM donations
+		WHERE teacher_profile_id = $1::uuid AND verification_status = 'VERIFIED'`, tid)
+	if err == nil {
+		defer rows.Close()
+		body := fmt.Sprintf(
+			"%s saat ini nonaktif sementara dari program (%s). Pertimbangkan memilih guru asuh baru di Penyaluran Aktif.",
+			profile.FullName, reason,
+		)
+		for rows.Next() {
+			var donorID string
+			if rows.Scan(&donorID) == nil && donorID != "" {
+				_ = s.CreateUserNotification(ctx, donorID, "TEACHER_SUSPENDED",
+					"Guru Asuh Anda Nonaktif Sementara", body, "Penyaluran Aktif")
+			}
+		}
+	}
+	return profile, nil
+}
+
+// ReactivateTeacher sets SUSPENDED → APPROVED and notifies previously affected donors.
+func (s *Store) ReactivateTeacher(ctx context.Context, profileID, actorUserID string, asAdmin bool) (TeacherProfile, error) {
+	if err := s.requireDB(); err != nil {
+		return TeacherProfile{}, err
+	}
+	tid, err := parseUUID(profileID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+	aid, err := parseUUID(actorUserID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+
+	q := `
+		UPDATE teacher_profiles tp
+		SET status = 'APPROVED'::application_status,
+		    is_published = TRUE,
+		    suspended_at = NULL,
+		    suspended_reason = '',
+		    suspended_by_user_id = NULL
+		WHERE tp.id = $1 AND tp.status = 'SUSPENDED'`
+	args := []any{tid}
+	if !asAdmin {
+		q += ` AND tp.institution_id IN (SELECT id FROM institutions WHERE validator_user_id = $2)`
+		args = append(args, aid)
+	}
+	tag, err := s.pool.Exec(ctx, q, args...)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		if _, err := s.GetTeacherByID(ctx, profileID); errors.Is(err, ErrNotFound) {
+			return TeacherProfile{}, ErrNotFound
+		}
+		return TeacherProfile{}, ErrInvalidState
+	}
+
+	profile, err := s.GetTeacherByID(ctx, profileID)
+	if err != nil {
+		return TeacherProfile{}, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT donor_user_id::text
+		FROM donations
+		WHERE teacher_profile_id = $1::uuid AND verification_status = 'VERIFIED'`, tid)
+	if err == nil {
+		defer rows.Close()
+		body := fmt.Sprintf("%s sudah aktif kembali di program Bea Guru.", profile.FullName)
+		for rows.Next() {
+			var donorID string
+			if rows.Scan(&donorID) == nil && donorID != "" {
+				_ = s.CreateUserNotification(ctx, donorID, "TEACHER_REACTIVATED",
+					"Guru Asuh Anda Aktif Kembali", body, "Penyaluran Aktif")
+			}
+		}
+	}
+	return profile, nil
 }
 
 func (s *Store) ListPendingValidations(ctx context.Context, validatorUserID string) ([]TeacherProfile, error) {

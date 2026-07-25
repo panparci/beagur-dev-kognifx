@@ -15,7 +15,7 @@ import { ModalBackdrop } from '@core/ui/ModalBackdrop';
 import { useToast } from '@core/ui/toast/ToastProvider';
 
 type TeacherItem = { profile: TeacherProfile; institutionName: string };
-type HistoryFilter = 'all' | 'approved' | 'rejected' | 'pending_foundation';
+type HistoryFilter = 'all' | 'approved' | 'rejected' | 'pending_foundation' | 'suspended';
 
 const ValidatorDashboard: React.FC = () => {
   const user = useRequireUser();
@@ -26,6 +26,8 @@ const ValidatorDashboard: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<TeacherItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all');
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendBusy, setSuspendBusy] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -52,6 +54,41 @@ const ValidatorDashboard: React.FC = () => {
       await loadData();
     } catch {
       toast.error('Gagal menyalurkan keputusan verifikasi.');
+    }
+  };
+
+  const handleSuspend = async () => {
+    if (!selectedItem?.profile.id) return;
+    if (!suspendReason.trim()) {
+      toast.error('Alasan nonaktif wajib diisi');
+      return;
+    }
+    setSuspendBusy(true);
+    try {
+      await teacherService.suspendTeacher(selectedItem.profile.id, suspendReason.trim());
+      toast.success('Guru dinonaktifkan sementara. Donatur terkait mendapat notifikasi.');
+      setSuspendReason('');
+      setSelectedItem(null);
+      await loadData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menonaktifkan');
+    } finally {
+      setSuspendBusy(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!selectedItem?.profile.id) return;
+    setSuspendBusy(true);
+    try {
+      await teacherService.reactivateTeacher(selectedItem.profile.id);
+      toast.success('Guru diaktifkan kembali.');
+      setSelectedItem(null);
+      await loadData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal mengaktifkan');
+    } finally {
+      setSuspendBusy(false);
     }
   };
 
@@ -93,6 +130,8 @@ const ValidatorDashboard: React.FC = () => {
       items = items.filter((i) => i.profile.status === ApplicationStatus.REJECTED);
     } else if (historyFilter === 'pending_foundation') {
       items = items.filter((i) => i.profile.status === ApplicationStatus.PENDING_APPROVAL);
+    } else if (historyFilter === 'suspended') {
+      items = items.filter((i) => i.profile.status === ApplicationStatus.SUSPENDED);
     }
     return items;
   }, [processedTeachers, searchQuery, historyFilter]);
@@ -168,6 +207,36 @@ const ValidatorDashboard: React.FC = () => {
                 <Button variant="success" onClick={() => handleDecision(selectedItem.profile.id!, true)}>
                   Setujui & Teruskan ke Yayasan
                 </Button>
+              </div>
+            )}
+            {selectedItem.profile.status === ApplicationStatus.APPROVED && (
+              <div className="space-y-3 pt-5 border-t">
+                <label className="block text-sm">
+                  <span className="font-medium text-bea-ink">Alasan nonaktif</span>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-bea-line px-3 py-2"
+                    value={suspendReason}
+                    onChange={(e) => setSuspendReason(e.target.value)}
+                    placeholder="Mis. mengundurkan diri / masalah lapangan"
+                  />
+                </label>
+                <div className="flex justify-end">
+                  <Button variant="danger" disabled={suspendBusy} onClick={() => void handleSuspend()}>
+                    {suspendBusy ? 'Memproses…' : 'Nonaktifkan sementara'}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {selectedItem.profile.status === ApplicationStatus.SUSPENDED && (
+              <div className="space-y-2 pt-5 border-t">
+                {selectedItem.profile.suspendedReason ? (
+                  <p className="text-sm text-bea-sage-muted">Alasan: {selectedItem.profile.suspendedReason}</p>
+                ) : null}
+                <div className="flex justify-end">
+                  <Button variant="success" disabled={suspendBusy} onClick={() => void handleReactivate()}>
+                    {suspendBusy ? 'Memproses…' : 'Aktifkan kembali'}
+                  </Button>
+                </div>
               </div>
             )}
           </Card>
@@ -373,6 +442,7 @@ const ValidatorDashboard: React.FC = () => {
                   ['all', 'Semua'],
                   ['pending_foundation', 'Menunggu Yayasan'],
                   ['approved', 'Diterima Final'],
+                  ['suspended', 'Nonaktif'],
                   ['rejected', 'Ditolak'],
                 ] as const
               ).map(([key, label]) => (
