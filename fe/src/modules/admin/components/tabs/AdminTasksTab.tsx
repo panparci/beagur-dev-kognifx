@@ -8,7 +8,7 @@ import { usePortalNav } from '@core/routing/usePortalNav';
 import { useToast } from '@core/ui/toast/ToastProvider';
 import { beaFieldLabel, beaInput, beaSelect, beaTextarea } from '@core/ui/beaTheme';
 import { ADMIN_TASKS_TAB } from '@core/constants/tabs';
-import { TaskTemplate, taskService } from '../../services/taskService';
+import { TaskAssignment, TaskTemplate, taskService } from '../../services/taskService';
 
 export function AdminTasksTab() {
   const { activeTab } = usePortalNav();
@@ -20,6 +20,8 @@ export function AdminTasksTab() {
   const [type, setType] = useState<'ROUTINE' | 'ADHOC'>('ADHOC');
   const [fieldLabel, setFieldLabel] = useState('Konfirmasi sudah dikerjakan');
   const [loading, setLoading] = useState(false);
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [subs, setSubs] = useState<TaskAssignment[]>([]);
 
   const reload = async () => setTemplates(await taskService.listTemplates());
 
@@ -28,6 +30,14 @@ export function AdminTasksTab() {
     void reload().catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal memuat tugas'));
   }, [active]);
 
+  const openSubs = async (templateId: string) => {
+    setViewId(templateId);
+    try {
+      setSubs(await taskService.listAssignments(templateId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memuat kiriman');
+    }
+  };
   const handleCreate = async () => {
     if (!title.trim()) {
       toast.error('Judul wajib diisi');
@@ -112,7 +122,10 @@ export function AdminTasksTab() {
                     </div>
                     <Badge variant={t.isActive ? 'success' : 'neutral'}>{t.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => void openSubs(t.id)}>
+                      Lihat kiriman
+                    </Button>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -133,6 +146,34 @@ export function AdminTasksTab() {
           )}
         </Card>
       </div>
+
+      {viewId ? (
+        <Card className="mt-4 p-4 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-bea-ink">Kiriman assignment</h3>
+            <Button size="sm" variant="secondary" onClick={() => setViewId(null)}>
+              Tutup
+            </Button>
+          </div>
+          {subs.length === 0 ? (
+            <p className="text-sm text-bea-sage-muted">Belum ada assignment.</p>
+          ) : (
+            <ul className="space-y-2 max-h-80 overflow-auto text-sm">
+              {subs.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-2 border-b border-bea-line py-2">
+                  <span className="text-bea-ink truncate">
+                    {a.teacherUserId.slice(0, 8)}… · {a.status}
+                    {a.isLate ? ' · terlambat' : ''}
+                  </span>
+                  <Badge variant={a.isLate ? 'danger' : a.status === 'SUBMITTED' ? 'success' : 'warning'}>
+                    {a.isLate ? 'SUBMITTED (late)' : a.status}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      ) : null}
     </div>
   );
 }

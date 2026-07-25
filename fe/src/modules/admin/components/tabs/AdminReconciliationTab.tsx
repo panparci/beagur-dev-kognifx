@@ -15,6 +15,7 @@ import {
   parseBankCsv,
   reconciliationService,
 } from '../../services/reconciliationService';
+import { parseJagoPdfFile } from '../../utils/jagoStatementParser';
 
 const statusVariant = (s: string) => {
   if (s === 'MATCHED' || s === 'COMPLETED') return 'success' as const;
@@ -22,6 +23,13 @@ const statusVariant = (s: string) => {
   if (s === 'IGNORED') return 'neutral' as const;
   return 'danger' as const;
 };
+
+function guessDirectionFromName(name: string): BankDirection | null {
+  const n = name.toLowerCase();
+  if (/donasi|incoming|masuk/.test(n)) return 'INCOMING';
+  if (/transfer|outgoing|keluar|penyaluran/.test(n)) return 'OUTGOING';
+  return null;
+}
 
 export function AdminReconciliationTab() {
   const { activeTab } = usePortalNav();
@@ -33,6 +41,7 @@ export function AdminReconciliationTab() {
   const [direction, setDirection] = useState<BankDirection>('INCOMING');
   const [fileName, setFileName] = useState('rekening-koran.csv');
   const [csvText, setCsvText] = useState('');
+  const [showCsv, setShowCsv] = useState(false);
   const [loading, setLoading] = useState(false);
   const [donorLineId, setDonorLineId] = useState<string | null>(null);
   const [donorName, setDonorName] = useState('');
@@ -59,19 +68,48 @@ export function AdminReconciliationTab() {
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal memuat baris'));
   }, [selectedId]);
 
-  const handleUpload = async () => {
-    const parsed = parseBankCsv(csvText);
+  const submitLines = async (name: string, dir: BankDirection, parsed: ReturnType<typeof parseBankCsv>) => {
     if (parsed.length === 0) {
-      toast.error('CSV kosong. Format: tanggal,jumlah,nama,rekening,keterangan');
+      toast.error('Tidak ada mutasi yang bisa diparse dari file.');
       return;
     }
+    const upload = await reconciliationService.createUpload({ fileName: name, direction: dir, lines: parsed });
+    toast.success(`${upload.matchedCount}/${upload.totalLines} baris cocok otomatis.`, 'Upload berhasil');
+    setCsvText('');
+    await reload();
+    setSelectedId(upload.id);
+  };
+
+  const handlePdf = async (file: File | null) => {
+    if (!file) return;
+    if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+      toast.error('Hanya berkas PDF rekening koran Bank Jago yang didukung.');
+      return;
+    }
+    const dir = guessDirectionFromName(file.name) ?? direction;
+    setDirection(dir);
+    setFileName(file.name);
     setLoading(true);
     try {
-      const upload = await reconciliationService.createUpload({ fileName, direction, lines: parsed });
-      toast.success(`${upload.matchedCount}/${upload.totalLines} baris cocok otomatis.`, 'Upload berhasil');
-      setCsvText('');
-      await reload();
-      setSelectedId(upload.id);
+      const parsed = await parseJagoPdfFile(file, dir);
+      if (parsed.length === 0) {
+        toast.error(
+          'Tidak ada mutasi Incoming/Outgoing Transfer. Cek arah (masuk/keluar) atau pastikan PDF punya lapisan teks (bukan scan gambar).',
+        );
+        return;
+      }
+      await submitLines(file.name, dir, parsed);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal membaca PDF Jago');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    setLoading(true);
+    try {
+      await submitLines(fileName, direction, parseBankCsv(csvText));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Upload gagal');
     } finally {
@@ -94,31 +132,56 @@ export function AdminReconciliationTab() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-4 space-y-3">
-          <h3 className="font-semibold text-bea-ink">Upload mutasi (CSV)</h3>
+          <h3 className="font-semibold text-bea-ink">Upload rekening koran (Bank Jago PDF)</h3>
+          <p className="text-sm text-bea-sage-muted">
+            Format Pockets Transactions History. Pocket Donasi → masuk; Transfer → keluar. Movement antar pocket diabaikan.
+          </p>
           <label className="block">
-            <span className={beaFieldLabel}>Arah</span>
+            <span className={beaFieldLabel}>Arah (otomatis dari nama file bila bisa)</span>
             <select className={beaSelect} value={direction} onChange={(e) => setDirection(e.target.value as BankDirection)}>
               <option value="INCOMING">Masuk (donatur → yayasan)</option>
               <option value="OUTGOING">Keluar (yayasan → guru)</option>
             </select>
           </label>
           <label className="block">
-            <span className={beaFieldLabel}>Nama file</span>
-            <input className={beaInput} value={fileName} onChange={(e) => setFileName(e.target.value)} />
-          </label>
-          <label className="block">
-            <span className={beaFieldLabel}>CSV (tanggal,jumlah,nama,rekening,keterangan)</span>
-            <textarea
-              className={beaTextarea}
-              rows={8}
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              placeholder="2026-07-01,500000,Budi,1234567890,Transfer donasi"
+            <span className={beaFieldLabel}>PDF Jago</span>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className={beaInput}
+              disabled={loading}
+              onChange={(e) => void handlePdf(e.target.files?.[0] ?? null)}
             />
           </label>
-          <Button onClick={() => void handleUpload()} disabled={loading}>
-            {loading ? 'Memproses…' : 'Upload & auto-match'}
-          </Button>
+          <button
+            type="button"
+            className="text-sm text-bea-copper underline"
+            onClick={() => setShowCsv((v) => !v)}
+          >
+            {showCsv ? 'Sembunyikan CSV manual' : 'Atau paste CSV manual'}
+          </button>
+          {showCsv ? (
+            <>
+              <label className="block">
+                <span className={beaFieldLabel}>Nama file</span>
+                <input className={beaInput} value={fileName} onChange={(e) => setFileName(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className={beaFieldLabel}>CSV (tanggal,jumlah,nama,rekening,keterangan)</span>
+                <textarea
+                  className={beaTextarea}
+                  rows={6}
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  placeholder="2026-07-01,500000,Budi,1234567890,Transfer donasi"
+                />
+              </label>
+              <Button onClick={() => void handleUpload()} disabled={loading}>
+                {loading ? 'Memproses…' : 'Upload CSV & auto-match'}
+              </Button>
+            </>
+          ) : null}
+          {loading ? <p className="text-sm text-bea-sage-muted">Memproses file…</p> : null}
         </Card>
 
         <Card className="p-4 space-y-3">

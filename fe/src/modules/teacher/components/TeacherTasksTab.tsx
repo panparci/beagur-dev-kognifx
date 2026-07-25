@@ -38,8 +38,9 @@ export function TeacherTasksTab() {
     }
     setBusyId(item.id);
     try {
+      const late = item.status === 'OVERDUE';
       await taskService.submit(item.id, responses);
-      toast.success('Tugas dikirim');
+      toast.success(late ? 'Tugas dikirim (terlambat).' : 'Tugas dikirim');
       await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal mengirim');
@@ -70,19 +71,27 @@ export function TeacherTasksTab() {
                     </p>
                   ) : null}
                 </div>
-                <Badge
-                  variant={
-                    item.status === 'SUBMITTED' ? 'success' : item.status === 'OVERDUE' ? 'danger' : 'warning'
-                  }
-                >
-                  {item.status}
-                </Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge
+                    variant={
+                      item.status === 'SUBMITTED' ? 'success' : item.status === 'OVERDUE' ? 'danger' : 'warning'
+                    }
+                  >
+                    {item.status}
+                  </Badge>
+                  {item.isLate ? <Badge variant="danger">Terlambat</Badge> : null}
+                </div>
               </div>
 
               {item.status === 'SUBMITTED' ? (
-                <p className="text-sm text-bea-sage-muted">Sudah dikirim. Terima kasih.</p>
+                <p className="text-sm text-bea-sage-muted">
+                  Sudah dikirim{item.isLate ? ' (setelah tenggat)' : ''}. Terima kasih.
+                </p>
               ) : (
                 <>
+                  {item.status === 'OVERDUE' ? (
+                    <p className="text-sm text-bea-copper">Tenggat sudah lewat. Pengiriman akan ditandai terlambat.</p>
+                  ) : null}
                   {(item.fields ?? []).map((field) => (
                     <label key={field.id} className="block">
                       <span className={beaFieldLabel}>{field.label}</span>
@@ -97,7 +106,7 @@ export function TeacherTasksTab() {
                     </label>
                   ))}
                   <Button disabled={busyId === item.id} onClick={() => void submit(item)}>
-                    {busyId === item.id ? 'Mengirim…' : 'Kirim tugas'}
+                    {busyId === item.id ? 'Mengirim…' : item.status === 'OVERDUE' ? 'Kirim (terlambat)' : 'Kirim tugas'}
                   </Button>
                 </>
               )}

@@ -47,6 +47,7 @@ type TaskAssignment struct {
 	TeacherUserID    string              `json:"teacherUserId"`
 	Period           string              `json:"period"`
 	Status           string              `json:"status"`
+	IsLate           bool                `json:"isLate"`
 	AssignedAt       time.Time           `json:"assignedAt"`
 	DueAt            *time.Time          `json:"dueAt,omitempty"`
 	SubmittedAt      *time.Time          `json:"submittedAt,omitempty"`
@@ -359,7 +360,7 @@ func (s *Store) ListTaskAssignmentsAdmin(ctx context.Context, templateID string)
 	}
 	q := `
 		SELECT a.id::text, a.template_id::text, a.teacher_profile_id::text, a.teacher_user_id::text,
-		       a.period, a.status, a.assigned_at, a.due_at, a.submitted_at, a.responses,
+		       a.period, a.status, a.is_late, a.assigned_at, a.due_at, a.submitted_at, a.responses,
 		       t.title, t.description, t.fields
 		FROM task_assignments a
 		JOIN task_templates t ON t.id = a.template_id`
@@ -390,7 +391,7 @@ func (s *Store) ListMyTaskAssignments(ctx context.Context, userID string) ([]Tas
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id::text, a.template_id::text, a.teacher_profile_id::text, a.teacher_user_id::text,
-		       a.period, a.status, a.assigned_at, a.due_at, a.submitted_at, a.responses,
+		       a.period, a.status, a.is_late, a.assigned_at, a.due_at, a.submitted_at, a.responses,
 		       t.title, t.description, t.fields
 		FROM task_assignments a
 		JOIN task_templates t ON t.id = a.template_id
@@ -414,7 +415,7 @@ func scanTaskAssignments(rows pgx.Rows) ([]TaskAssignment, error) {
 		var respRaw, fieldsRaw []byte
 		if err := rows.Scan(
 			&a.ID, &a.TemplateID, &a.TeacherProfileID, &a.TeacherUserID,
-			&a.Period, &a.Status, &a.AssignedAt, &due, &submitted, &respRaw,
+			&a.Period, &a.Status, &a.IsLate, &a.AssignedAt, &due, &submitted, &respRaw,
 			&a.Title, &a.Description, &fieldsRaw,
 		); err != nil {
 			return nil, err
@@ -443,9 +444,13 @@ func (s *Store) SubmitTaskAssignment(ctx context.Context, assignmentID, userID s
 		return TaskAssignment{}, err
 	}
 	respJSON, _ := json.Marshal(responses)
+	// ponytail: late flag from pre-submit status; ceiling = no separate LATE status enum
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE task_assignments
-		SET status = 'SUBMITTED', submitted_at = NOW(), responses = $3::jsonb
+		SET status = 'SUBMITTED',
+		    is_late = (status = 'OVERDUE'),
+		    submitted_at = NOW(),
+		    responses = $3::jsonb
 		WHERE id = $1::uuid AND teacher_user_id = $2::uuid AND status IN ('PENDING', 'OVERDUE')`,
 		assignmentID, userID, respJSON)
 	if err != nil {

@@ -31,6 +31,7 @@ export type TaskAssignment = {
   teacherUserId: string;
   period: string;
   status: 'PENDING' | 'SUBMITTED' | 'OVERDUE';
+  isLate?: boolean;
   assignedAt: string;
   dueAt?: string | null;
   submittedAt?: string | null;
