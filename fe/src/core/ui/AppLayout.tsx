@@ -5,6 +5,7 @@ import { useToast } from '@core/ui/toast/ToastProvider';
 import { usePortalNav } from '@core/routing/usePortalNav';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import PortalLogo from './PortalLogo';
+import { NotificationBell } from './NotificationBell';
 import { UserRole } from '../types';
 import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB, ADMIN_RECONCILIATION_TAB, ADMIN_TASKS_TAB, ADMIN_LMS_TAB, TEACHER_TRAINING_TAB, TEACHER_TASKS_TAB } from '../constants/tabs';
 import { portalPathForTab } from '../routing/tabRoutes';
@@ -272,6 +273,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
             )}
 
             <div className="portal-header-actions shrink-0" ref={dropdownRef}>
+              <NotificationBell />
               <button
                 type="button"
                 onClick={() => setIsProfileOpen(!isProfileOpen)}

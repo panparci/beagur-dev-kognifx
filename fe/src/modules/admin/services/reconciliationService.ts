@@ -28,6 +28,7 @@ export type BankTransactionLine = {
   matchedLedgerId?: string | null;
   suggestedDonationId?: string | null;
   suggestedLedgerId?: string | null;
+  suggestedDonorUserId?: string | null;
 };
 
 export type BankLineInput = {
@@ -48,6 +49,10 @@ export const reconciliationService = {
     apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/confirm`, body ?? {}),
   ignoreLine: (lineId: string) =>
     apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/ignore`, {}),
+  createDonorFromLine: (lineId: string, body: { donorName: string; email: string }) =>
+    apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/create-donor`, body),
+  confirmSuggestedDonor: (lineId: string) =>
+    apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/confirm-donor`, {}),
 };
 
 /** Parse CSV: date,amount,name,account,description */

@@ -101,6 +101,7 @@ func New(deps Dependencies) *gin.Engine {
 	reconciliationHandler := handler.ReconciliationHandler{Store: st}
 	tasksHandler := handler.TasksHandler{Store: st}
 	lmsHandler := handler.LmsHandler{Store: st}
+	notificationsHandler := handler.NotificationsHandler{Store: st}
 
 	r.GET("/healthz", healthHandler.Health)
 	r.GET("/readyz", healthHandler.Ready)
@@ -170,6 +171,13 @@ func New(deps Dependencies) *gin.Engine {
 		auth.POST("/admin/reconciliation/uploads", perm("reconciliation:write"), reconciliationHandler.CreateUpload)
 		auth.POST("/admin/reconciliation/lines/:id/confirm", perm("reconciliation:write"), reconciliationHandler.ConfirmLine)
 		auth.POST("/admin/reconciliation/lines/:id/ignore", perm("reconciliation:write"), reconciliationHandler.IgnoreLine)
+		auth.POST("/admin/reconciliation/lines/:id/create-donor", perm("reconciliation:write"), reconciliationHandler.CreateDonorFromLine)
+		auth.POST("/admin/reconciliation/lines/:id/confirm-donor", perm("reconciliation:write"), reconciliationHandler.ConfirmSuggestedDonor)
+
+		auth.GET("/notifications", notificationsHandler.ListMine)
+		auth.GET("/notifications/unread-count", notificationsHandler.UnreadCount)
+		auth.POST("/notifications/:id/read", notificationsHandler.MarkRead)
+		auth.POST("/notifications/read-all", notificationsHandler.MarkAllRead)
 
 		auth.GET("/admin/tasks/templates", perm("tasks:read"), tasksHandler.ListTemplates)
 		auth.POST("/admin/tasks/templates", perm("tasks:write"), tasksHandler.CreateTemplate)

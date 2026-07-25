@@ -31,6 +31,7 @@ var RequiredTables = []string{
 	"lms_courses",
 	"lms_progress",
 	"live_sessions",
+	"user_notifications",
 }
 
 func MissingTables(ctx context.Context, pool *pgxpool.Pool, tables []string) ([]string, error) {

@@ -34,6 +34,9 @@ export function AdminReconciliationTab() {
   const [fileName, setFileName] = useState('rekening-koran.csv');
   const [csvText, setCsvText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [donorLineId, setDonorLineId] = useState<string | null>(null);
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
 
   const reload = async () => {
     const list = await reconciliationService.listUploads();
@@ -179,18 +182,46 @@ export function AdminReconciliationTab() {
                         <span className="text-xs text-bea-sage-muted">Selesai</span>
                       ) : (
                         <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              void reconciliationService
-                                .confirmLine(line.id)
-                                .then(refreshLines)
-                                .then(() => toast.success('Baris dikonfirmasi'))
-                                .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
-                            }
-                          >
-                            Konfirmasi
-                          </Button>
+                          {line.suggestedDonorUserId && !line.suggestedDonationId ? (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                void reconciliationService
+                                  .confirmSuggestedDonor(line.id)
+                                  .then(refreshLines)
+                                  .then(() => toast.success('Donasi baru dari donatur dikenal'))
+                                  .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
+                              }
+                            >
+                              Catat donasi
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                void reconciliationService
+                                  .confirmLine(line.id)
+                                  .then(refreshLines)
+                                  .then(() => toast.success('Baris dikonfirmasi'))
+                                  .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
+                              }
+                            >
+                              Konfirmasi
+                            </Button>
+                          )}
+                          {line.direction === 'INCOMING' && line.matchStatus === 'UNMATCHED' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setDonorLineId(line.id);
+                                setDonorName(line.counterpartyName || '');
+                                setDonorEmail('');
+                              }}
+                            >
+                              Buat donatur
+                            </Button>
+                          ) : null}
                           <Button
                             size="sm"
                             variant="secondary"
@@ -211,6 +242,52 @@ export function AdminReconciliationTab() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </Card>
+      ) : null}
+
+      {donorLineId ? (
+        <Card className="p-4 mt-4 space-y-3 max-w-lg">
+          <h3 className="font-semibold text-bea-ink">Buat donatur dari mutasi walk-in</h3>
+          <label className="block">
+            <span className={beaFieldLabel}>Nama</span>
+            <input className={beaInput} value={donorName} onChange={(e) => setDonorName(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className={beaFieldLabel}>Email</span>
+            <input
+              className={beaInput}
+              type="email"
+              value={donorEmail}
+              onChange={(e) => setDonorEmail(e.target.value)}
+              placeholder="donatur@email.com"
+            />
+          </label>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                if (!donorName.trim() || !donorEmail.trim()) {
+                  toast.error('Nama dan email wajib');
+                  return;
+                }
+                void reconciliationService
+                  .createDonorFromLine(donorLineId, {
+                    donorName: donorName.trim(),
+                    email: donorEmail.trim(),
+                  })
+                  .then(refreshLines)
+                  .then(() => {
+                    toast.success('Donatur + donasi terverifikasi dibuat');
+                    setDonorLineId(null);
+                  })
+                  .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'));
+              }}
+            >
+              Simpan
+            </Button>
+            <Button variant="secondary" onClick={() => setDonorLineId(null)}>
+              Batal
+            </Button>
           </div>
         </Card>
       ) : null}

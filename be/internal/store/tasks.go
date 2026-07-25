@@ -335,6 +335,19 @@ func (s *Store) generateAssignmentsTx(ctx context.Context, tx pgx.Tx, templateID
 		}
 		if tag.RowsAffected() > 0 {
 			created++
+			var title, description string
+			_ = tx.QueryRow(ctx, `SELECT title, description FROM task_templates WHERE id = $1::uuid`, templateID).Scan(&title, &description)
+			deadline := ""
+			if dueAt != nil {
+				deadline = " Batas: " + dueAt.Format("2 Jan 2006")
+			}
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO user_notifications (user_id, type, title, body, link_tab)
+				VALUES ($1::uuid, 'TASK_ASSIGNED', $2, $3, 'Tugas & Misi Yayasan')`,
+				t.UserID,
+				"Tugas baru: "+title,
+				description+deadline,
+			)
 		}
 	}
 	return created, nil

@@ -84,6 +84,94 @@ func (h ReconciliationHandler) IgnoreLine(c *gin.Context) {
 	response.OK(c, data)
 }
 
+func (h ReconciliationHandler) CreateDonorFromLine(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	var body store.CreateDonorFromLineInput
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_BODY", err.Error())
+		return
+	}
+	data, err := h.Store.CreateDonorFromLine(c.Request.Context(), c.Param("id"), current.ID, body)
+	if writeStoreError(c, err) {
+		return
+	}
+	logAdminAction(c.Request.Context(), h.Store, current.ID, "reconciliation.create_donor", "bank_transaction_line", c.Param("id"), map[string]any{
+		"email": body.Email,
+	})
+	response.OK(c, data)
+}
+
+func (h ReconciliationHandler) ConfirmSuggestedDonor(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	data, err := h.Store.ConfirmSuggestedDonorDonation(c.Request.Context(), c.Param("id"), current.ID)
+	if writeStoreError(c, err) {
+		return
+	}
+	response.OK(c, data)
+}
+
+type NotificationsHandler struct {
+	Store *store.Store
+}
+
+func (h NotificationsHandler) ListMine(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	data, err := h.Store.ListMyNotifications(c.Request.Context(), current.ID, 40)
+	if writeStoreError(c, err) {
+		return
+	}
+	response.OK(c, data)
+}
+
+func (h NotificationsHandler) UnreadCount(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	n, err := h.Store.CountUnreadNotifications(c.Request.Context(), current.ID)
+	if writeStoreError(c, err) {
+		return
+	}
+	response.OK(c, gin.H{"count": n})
+}
+
+func (h NotificationsHandler) MarkRead(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	if err := h.Store.MarkNotificationRead(c.Request.Context(), current.ID, c.Param("id")); writeStoreError(c, err) {
+		return
+	}
+	response.OK(c, gin.H{"ok": true})
+}
+
+func (h NotificationsHandler) MarkAllRead(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	if err := h.Store.MarkAllNotificationsRead(c.Request.Context(), current.ID); writeStoreError(c, err) {
+		return
+	}
+	response.OK(c, gin.H{"ok": true})
+}
+
 type TasksHandler struct {
 	Store *store.Store
 }
