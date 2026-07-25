@@ -24,6 +24,13 @@ var RequiredTables = []string{
 	"user",
 	"session",
 	"account",
+	"bank_statement_uploads",
+	"bank_transaction_lines",
+	"task_templates",
+	"task_assignments",
+	"lms_courses",
+	"lms_progress",
+	"live_sessions",
 }
 
 func MissingTables(ctx context.Context, pool *pgxpool.Pool, tables []string) ([]string, error) {

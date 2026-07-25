@@ -116,6 +116,7 @@ export function AppRoutes() {
                   clearLoginError();
                   navigate('/');
                 }}
+                onClearLoginError={clearLoginError}
                 loginLoading={loginLoading}
                 loginError={loginError}
                 googleEnabled={googleEnabled}

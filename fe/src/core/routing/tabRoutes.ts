@@ -5,6 +5,11 @@ import {
   VALIDATOR_HISTORY_TAB,
   ADMIN_ANALYTICS_TAB,
   ADMIN_LANDING_CMS_TAB,
+  ADMIN_RECONCILIATION_TAB,
+  ADMIN_TASKS_TAB,
+  ADMIN_LMS_TAB,
+  TEACHER_TRAINING_TAB,
+  TEACHER_TASKS_TAB,
 } from '../constants/tabs';
 
 /** All dashboard tab labels — keep in sync with AppLayout nav links. */
@@ -13,12 +18,16 @@ export const ALL_PORTAL_TABS = [
   'Sekolah & Institusi',
   'Buku Ledger Keuangan',
   'Donatur & Donasi',
+  ADMIN_RECONCILIATION_TAB,
+  ADMIN_TASKS_TAB,
+  ADMIN_LMS_TAB,
   ADMIN_ANALYTICS_TAB,
   ADMIN_LANDING_CMS_TAB,
   'Validasi Laporan & Kebijakan',
   'Pengajuan Profil',
   'Laporan Kelas Bulanan',
-  'Pelatihan Pedagogi',
+  TEACHER_TASKS_TAB,
+  TEACHER_TRAINING_TAB,
   BENEFICIARY_TEACHERS_TAB,
   'Jejak Philanthropy',
   'Laporan Guru Asuh',
@@ -63,6 +72,9 @@ export function tabsForRole(role: UserRole | undefined): string[] {
         'Sekolah & Institusi',
         'Buku Ledger Keuangan',
         'Donatur & Donasi',
+        ADMIN_RECONCILIATION_TAB,
+        ADMIN_TASKS_TAB,
+        ADMIN_LMS_TAB,
         ADMIN_ANALYTICS_TAB,
         ADMIN_LANDING_CMS_TAB,
         'Validasi Laporan & Kebijakan',
@@ -72,7 +84,8 @@ export function tabsForRole(role: UserRole | undefined): string[] {
         OVERVIEW_TAB,
         'Pengajuan Profil',
         'Laporan Kelas Bulanan',
-        'Pelatihan Pedagogi',
+        TEACHER_TASKS_TAB,
+        TEACHER_TRAINING_TAB,
       ];
     case UserRole.DONOR:
       return [

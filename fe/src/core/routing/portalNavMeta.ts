@@ -38,6 +38,24 @@ export const PORTAL_NAV_META: Record<string, PortalNavMeta> = {
     group: 'operasional',
     mobile: 'Donatur',
   },
+  'Rekonsiliasi Bank': {
+    label: 'Rekonsiliasi',
+    hint: 'Cocokkan rekening koran',
+    group: 'operasional',
+    mobile: 'Rekon',
+  },
+  'Kelola Tugas Guru': {
+    label: 'Tugas Guru',
+    hint: 'Reminder & misi guru',
+    group: 'operasional',
+    mobile: 'Tugas',
+  },
+  'Kelola Pelatihan': {
+    label: 'Pelatihan',
+    hint: 'Kursus & sesi live',
+    group: 'operasional',
+    mobile: 'LMS',
+  },
   'Analitik Program': {
     label: 'Grafik Program',
     hint: 'Tren donasi & transfer',
@@ -58,6 +76,7 @@ export const PORTAL_NAV_META: Record<string, PortalNavMeta> = {
   },
   'Pengajuan Profil': { label: 'Profil Saya', mobile: 'Profil' },
   'Laporan Kelas Bulanan': { label: 'Laporan Bulanan', mobile: 'Laporan' },
+  'Tugas & Misi Yayasan': { label: 'Tugas & Misi', mobile: 'Tugas' },
   'Pelatihan Pedagogi': { label: 'Pelatihan', mobile: 'Pelatihan' },
   'Guru Penerima Bantuan': { label: 'Guru Penerima', mobile: 'Guru' },
   'Jejak Philanthropy': { label: 'Dampak Donasi', mobile: 'Dampak' },

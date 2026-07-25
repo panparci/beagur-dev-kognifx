@@ -98,6 +98,9 @@ func New(deps Dependencies) *gin.Engine {
 	filesHandler := handler.FilesHandler{Proofs: proofStore, Media: mediaStore, Store: st}
 	auditHandler := handler.AuditHandler{Store: st}
 	analyticsHandler := handler.AnalyticsHandler{Store: st}
+	reconciliationHandler := handler.ReconciliationHandler{Store: st}
+	tasksHandler := handler.TasksHandler{Store: st}
+	lmsHandler := handler.LmsHandler{Store: st}
 
 	r.GET("/healthz", healthHandler.Health)
 	r.GET("/readyz", healthHandler.Ready)
@@ -161,6 +164,29 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/admin/audit-logs", perm("audit:read"), auditHandler.List)
 		auth.GET("/admin/analytics/monthly", perm("analytics:read"), analyticsHandler.Monthly)
 		auth.POST("/admin/analytics/snapshots", perm("analytics:write"), analyticsHandler.ImportSnapshots)
+
+		auth.GET("/admin/reconciliation/uploads", perm("reconciliation:read"), reconciliationHandler.ListUploads)
+		auth.GET("/admin/reconciliation/uploads/:id/lines", perm("reconciliation:read"), reconciliationHandler.ListLines)
+		auth.POST("/admin/reconciliation/uploads", perm("reconciliation:write"), reconciliationHandler.CreateUpload)
+		auth.POST("/admin/reconciliation/lines/:id/confirm", perm("reconciliation:write"), reconciliationHandler.ConfirmLine)
+		auth.POST("/admin/reconciliation/lines/:id/ignore", perm("reconciliation:write"), reconciliationHandler.IgnoreLine)
+
+		auth.GET("/admin/tasks/templates", perm("tasks:read"), tasksHandler.ListTemplates)
+		auth.POST("/admin/tasks/templates", perm("tasks:write"), tasksHandler.CreateTemplate)
+		auth.PATCH("/admin/tasks/templates/:id", perm("tasks:write"), tasksHandler.SetTemplateActive)
+		auth.GET("/admin/tasks/assignments", perm("tasks:read"), tasksHandler.ListAssignmentsAdmin)
+		auth.GET("/tasks/mine", perm("tasks:read"), tasksHandler.ListMine)
+		auth.POST("/tasks/assignments/:id/submit", perm("tasks:submit"), tasksHandler.Submit)
+
+		auth.GET("/lms/courses", perm("lms:read"), lmsHandler.ListCourses)
+		auth.GET("/lms/courses/:id", perm("lms:read"), lmsHandler.GetCourse)
+		auth.POST("/admin/lms/courses", perm("lms:write"), lmsHandler.CreateCourse)
+		auth.PUT("/admin/lms/courses/:id", perm("lms:write"), lmsHandler.UpdateCourse)
+		auth.GET("/lms/progress/mine", perm("lms:read"), lmsHandler.MyProgress)
+		auth.POST("/lms/courses/:id/progress", perm("lms:read"), lmsHandler.SaveProgress)
+		auth.GET("/lms/sessions", perm("lms:read"), lmsHandler.ListSessions)
+		auth.POST("/admin/lms/sessions", perm("lms:write"), lmsHandler.CreateSession)
+		auth.POST("/lms/sessions/:id/register", perm("lms:read"), lmsHandler.RegisterSession)
 
 		auth.GET("/reports/mine", perm("reports:write"), reportHandler.Mine)
 		auth.POST("/reports", perm("reports:write"), reportHandler.Create)

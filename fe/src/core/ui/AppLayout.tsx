@@ -6,7 +6,7 @@ import { usePortalNav } from '@core/routing/usePortalNav';
 import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import PortalLogo from './PortalLogo';
 import { UserRole } from '../types';
-import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB } from '../constants/tabs';
+import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB, ADMIN_RECONCILIATION_TAB, ADMIN_TASKS_TAB, ADMIN_LMS_TAB, TEACHER_TRAINING_TAB, TEACHER_TASKS_TAB } from '../constants/tabs';
 import { portalPathForTab } from '../routing/tabRoutes';
 import { portalDocumentTitle, SITE_ORG } from '../constants/siteMeta';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -27,6 +27,8 @@ import {
   Globe,
   ShieldCheck,
   Users,
+  ClipboardList,
+  Scale,
 } from 'lucide-react';
 import {
   ADMIN_NAV_GROUP_ORDER,
@@ -137,6 +139,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
           { name: 'Sekolah & Institusi', icon: Building, to: portalPathForTab('Sekolah & Institusi') },
           { name: 'Buku Ledger Keuangan', icon: Banknote, to: portalPathForTab('Buku Ledger Keuangan') },
           { name: 'Donatur & Donasi', icon: HandCoins, to: portalPathForTab('Donatur & Donasi') },
+          { name: ADMIN_RECONCILIATION_TAB, icon: Scale, to: portalPathForTab(ADMIN_RECONCILIATION_TAB) },
+          { name: ADMIN_TASKS_TAB, icon: ClipboardList, to: portalPathForTab(ADMIN_TASKS_TAB) },
+          { name: ADMIN_LMS_TAB, icon: GraduationCap, to: portalPathForTab(ADMIN_LMS_TAB) },
           { name: ADMIN_ANALYTICS_TAB, icon: BarChart3, to: portalPathForTab(ADMIN_ANALYTICS_TAB) },
           { name: ADMIN_LANDING_CMS_TAB, icon: Globe, to: portalPathForTab(ADMIN_LANDING_CMS_TAB) },
           { name: 'Validasi Laporan & Kebijakan', icon: ShieldCheck, to: portalPathForTab('Validasi Laporan & Kebijakan') },
@@ -146,7 +151,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
           ...commonLinks,
           { name: 'Pengajuan Profil', icon: UserIcon, to: portalPathForTab('Pengajuan Profil') },
           { name: 'Laporan Kelas Bulanan', icon: FileText, to: portalPathForTab('Laporan Kelas Bulanan') },
-          { name: 'Pelatihan Pedagogi', icon: GraduationCap, to: portalPathForTab('Pelatihan Pedagogi') },
+          { name: TEACHER_TASKS_TAB, icon: ClipboardList, to: portalPathForTab(TEACHER_TASKS_TAB) },
+          { name: TEACHER_TRAINING_TAB, icon: GraduationCap, to: portalPathForTab(TEACHER_TRAINING_TAB) },
         ];
       case UserRole.DONOR:
         return [

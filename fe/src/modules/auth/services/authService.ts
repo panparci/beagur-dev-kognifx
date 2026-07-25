@@ -11,6 +11,10 @@ export const authService = {
       password,
     });
     if (error) {
+      const raw = (error.message ?? '').toLowerCase();
+      if (raw.includes('not found') || raw.includes('no user') || raw.includes('does not exist')) {
+        throw new Error('Akun belum terdaftar. Silakan daftar dulu sebelum masuk.');
+      }
       throw new Error(error.message ?? 'Email atau password salah.');
     }
 
@@ -30,6 +34,10 @@ export const authService = {
       name: name.trim(),
     });
     if (error) {
+      const raw = (error.message ?? '').toLowerCase();
+      if (raw.includes('already') || raw.includes('exists') || raw.includes('registered')) {
+        throw new Error('Email sudah terdaftar. Silakan masuk dengan akun tersebut.');
+      }
       throw new Error(error.message ?? 'Pendaftaran gagal. Coba lagi.');
     }
 

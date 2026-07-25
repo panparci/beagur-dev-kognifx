@@ -16,13 +16,15 @@ import { draftStorageKey, hasDirtyDraft } from '@core/draft/draftStorage';
 import { findRegionByLabel, INDONESIA_REGIONS } from '@core/geo/indonesiaRegions';
 import { useDraftState, useUnsavedChangesGuard } from '@core/hooks/useDraftState';
 import { formatBankAccount } from '@core/utils/bank';
-import { UploadCloud, History, Sparkles, BookOpen, AlertCircle, MapPin, Loader2 } from 'lucide-react';
+import { UploadCloud, History, Sparkles, AlertCircle, MapPin, Loader2 } from 'lucide-react';
 import { TeacherPortalTutorial } from '../tutorial/TeacherPortalTutorial';
 import { TeacherReportWizard } from './TeacherReportWizard';
-import { OVERVIEW_TAB } from '@core/constants/tabs';
+import { OVERVIEW_TAB, TEACHER_TRAINING_TAB, TEACHER_TASKS_TAB } from '@core/constants/tabs';
+import { TeacherTasksTab } from './TeacherTasksTab';
+import { TeacherTrainingTab } from './TeacherTrainingTab';
 import BusinessFlowBar from '@core/ui/BusinessFlowBar';
 import { beaInput, beaSelect, beaTextarea, beaFieldLabel, beaFieldHint, beaSectionTitle, beaBody } from '@core/ui/beaTheme';
-import { PortalModuleItem, PortalSectionHead, PortalStatChip } from '@core/ui/portal/PortalPrimitives';
+import { PortalSectionHead, PortalStatChip } from '@core/ui/portal/PortalPrimitives';
 import { useToast } from '@core/ui/toast/ToastProvider';
 import { uploadService } from '@modules/funding/services/uploadService';
 
@@ -72,7 +74,8 @@ const TeacherDashboard: React.FC = () => {
   const isOverview = currentActiveTab === OVERVIEW_TAB;
   const isProfileTab = isOverview || currentActiveTab === 'Pengajuan Profil';
   const isReportsTab = isOverview || currentActiveTab === 'Laporan Kelas Bulanan';
-  const isTrainingTab = isOverview || currentActiveTab === 'Pelatihan Pedagogi';
+  const isTrainingTab = isOverview || currentActiveTab === TEACHER_TRAINING_TAB;
+  const isTasksTab = currentActiveTab === TEACHER_TASKS_TAB;
 
   useEffect(() => {
     if (user) {
@@ -254,12 +257,6 @@ const TeacherDashboard: React.FC = () => {
       toast.error('Terjadi kendala saat menyimpan profil. Coba lagi.');
     }
   };
-
-  const eduMaterials = [
-    { title: 'Teknik Mengajar Kreatif Gizi Anak Terpadu', desc: 'Cara efektif mengintegrasikan edukasi kesehatan ke dalam materi ajar harian.' },
-    { title: 'Manajemen Kelas Tanpa Fasilitas Mewah', desc: 'Inovasi belajar mengajar menggunakan bahan daur ulang dan media lingkungan.' },
-    { title: 'Pedoman Pembuatan Laporan Dampak Publik', desc: 'Tips bercerita yang baik demi memertahankan donatur asuh tetap bertahan.' },
-  ];
 
   const reportRows = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
   const schoolList = useMemo(() => (Array.isArray(institutions) ? institutions : []), [institutions]);
@@ -579,14 +576,10 @@ const TeacherDashboard: React.FC = () => {
           {isTrainingTab && (
             <div className={isOverview ? 'block' : 'hidden'}>
               <Card variant="soft">
-                <PortalSectionHead title="Pelatihan" description="Modul pendampingan guru." />
-                <ul className="mt-3 space-y-2">
-                  {eduMaterials.slice(0, 2).map((mat) => (
-                    <li key={mat.title} className="border-l-2 border-bea-copper pl-2.5 text-xs leading-snug text-bea-sage">
-                      {mat.title}
-                    </li>
-                  ))}
-                </ul>
+                <PortalSectionHead title="Pelatihan" description="Kursus & sesi live yayasan." />
+                <p className="mt-3 text-xs leading-snug text-bea-sage">
+                  Buka menu Pelatihan Pedagogi untuk kursus mandiri, kuis, sertifikat, dan sesi live.
+                </p>
               </Card>
             </div>
           )}
@@ -641,24 +634,11 @@ const TeacherDashboard: React.FC = () => {
         </div>
 
         <div className={`${isTrainingTab && !isOverview ? 'block' : 'hidden'} lg:col-span-3`}>
-            <Card>
-              <PortalSectionHead
-                title="Materi pendampingan guru"
-                description="Modul pelatihan hasil kerjasama pakar pedagogi Bea Guru."
-                icon={BookOpen}
-              />
-              <div className="portal-module-grid mt-4">
-                {eduMaterials.map((mat) => (
-                  <PortalModuleItem
-                    key={mat.title}
-                    title={mat.title}
-                    description={mat.desc}
-                    icon={BookOpen}
-                    meta="Modul terbuka"
-                  />
-                ))}
-              </div>
-            </Card>
+          <TeacherTrainingTab />
+        </div>
+
+        <div className={`${isTasksTab ? 'block' : 'hidden'} lg:col-span-3`}>
+          <TeacherTasksTab />
         </div>
       </div>
     </PortalShell>

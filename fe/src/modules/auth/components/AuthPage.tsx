@@ -1,10 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { PasswordInput } from '@core/ui/PasswordInput';
 import { PORTAL_FOG_EASE } from '@core/routing/portalTransition';
 import { AiAssistantWidget } from '@modules/ai-assistant/components/AiAssistantWidget';
+import {
+  DEV_DEMO_PASSWORD,
+  LOGIN_FORM_SUGGESTIONS,
+  REGISTER_FORM_EXAMPLE,
+} from '@modules/auth/devPersonas';
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail, User } from 'lucide-react';
 import {
   MASCOT_FALLBACK_URL,
   MASCOT_IS_GIF,
@@ -17,6 +23,7 @@ interface AuthPageProps {
   onSignUpWithEmail: (name: string, email: string, password: string) => void;
   onLoginWithGoogle: () => void;
   onSwitchToLanding: () => void;
+  onClearLoginError?: () => void;
   loginLoading?: boolean;
   loginError?: string | null;
   googleEnabled?: boolean;
@@ -24,21 +31,43 @@ interface AuthPageProps {
 }
 
 const AUTH_MASCOT_BG = '#DFD8CE';
+const IS_DEV = import.meta.env.DEV;
+
+const AUTH_CARD_COPY = {
+  login: {
+    kicker: 'Selamat datang kembali',
+    lead: 'Masuk ke ruang kerja Bea Guru untuk mengelola donasi, validasi, dan laporan dalam satu portal tepercaya.',
+  },
+  register: {
+    kicker: 'Buat akun baru',
+    lead: 'Daftar gratis — pilih peran sebagai guru, kepala sekolah, atau donatur setelah pendaftaran selesai.',
+  },
+} as const;
 
 const AuthPage: React.FC<AuthPageProps> = ({
+  onLoginWithEmail,
+  onSignUpWithEmail,
   onLoginWithGoogle,
   onSwitchToLanding,
+  onClearLoginError,
   loginLoading = false,
   loginError = null,
   googleEnabled = false,
   authTransitioning = false,
 }) => {
   const reduce = useReducedMotion();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [devInstantOpen, setDevInstantOpen] = useState(false);
   const [mascotSrc, setMascotSrc] = useState(MASCOT_URL);
   const [mascotUseVideo, setMascotUseVideo] = useState(!MASCOT_IS_GIF);
   const mascotRef = useRef<HTMLVideoElement>(null);
 
-  usePageMeta(PAGE_META.login);
+  usePageMeta(mode === 'login' ? PAGE_META.login : PAGE_META.register);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -68,6 +97,51 @@ const AuthPage: React.FC<AuthPageProps> = ({
     video.addEventListener('loadeddata', play);
     return () => video.removeEventListener('loadeddata', play);
   }, [mascotUseVideo]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    if (!email.trim() || !password || loginLoading) return;
+
+    if (mode === 'register') {
+      if (!name.trim()) {
+        setLocalError('Nama lengkap wajib diisi.');
+        return;
+      }
+      if (password.length < 8) {
+        setLocalError('Password minimal 8 karakter.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setLocalError('Konfirmasi password tidak cocok.');
+        return;
+      }
+      onSignUpWithEmail(name.trim(), email.trim(), password);
+      return;
+    }
+
+    onLoginWithEmail(email.trim(), password);
+  };
+
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next);
+    setLocalError(null);
+    onClearLoginError?.();
+  };
+
+  const applyLoginSuggestion = (suggestedEmail: string) => {
+    setLocalError(null);
+    setEmail(suggestedEmail);
+    setPassword(DEV_DEMO_PASSWORD);
+  };
+
+  const applyRegisterExample = () => {
+    setLocalError(null);
+    setName(REGISTER_FORM_EXAMPLE.name);
+    setEmail(REGISTER_FORM_EXAMPLE.email);
+    setPassword(REGISTER_FORM_EXAMPLE.password);
+    setConfirmPassword(REGISTER_FORM_EXAMPLE.password);
+  };
 
   return (
     <>
@@ -132,7 +206,7 @@ const AuthPage: React.FC<AuthPageProps> = ({
               <h1 className="auth-brand-title">Bea Guru Indonesia</h1>
               <p className="auth-brand-lead">
                 Platform penyaluran bantuan transparan untuk guru honorer di seluruh Indonesia.
-                Masuk dengan Google, lalu pilih peran sebagai guru, kepala sekolah, atau donatur.
+                Masuk dengan Google atau email, lalu pilih peran sebagai guru, kepala sekolah, atau donatur.
               </p>
             </div>
           </div>
@@ -146,54 +220,225 @@ const AuthPage: React.FC<AuthPageProps> = ({
               <header className="auth-card-head">
                 <div className="auth-card-kicker-row">
                   <span className="auth-card-kicker-line" aria-hidden />
-                  <p className="auth-card-kicker">Selamat datang kembali</p>
+                  <p className="auth-card-kicker">{AUTH_CARD_COPY[mode].kicker}</p>
                 </div>
-                <p className="auth-card-sub">
-                  Masuk ke ruang kerja Bea Guru untuk mengelola donasi, validasi, dan laporan dalam satu portal tepercaya.
-                </p>
+                <p className="auth-card-sub">{AUTH_CARD_COPY[mode].lead}</p>
               </header>
 
-              {loginError && (
+              {(loginError || localError) && (
                 <div role="alert" className="portal-banner portal-banner--error auth-card-alert">
-                  {loginError}
+                  <p className="auth-card-alert-text">{localError ?? loginError}</p>
+                  {mode === 'login' && !localError ? (
+                    <p className="auth-card-alert-hint">
+                      Belum punya akun?{' '}
+                      <button type="button" className="auth-mode-link" onClick={() => switchMode('register')}>
+                        Daftar sekarang
+                      </button>
+                    </p>
+                  ) : null}
+                  {mode === 'register' && !localError ? (
+                    <p className="auth-card-alert-hint">
+                      Sudah punya akun?{' '}
+                      <button type="button" className="auth-mode-link" onClick={() => switchMode('login')}>
+                        Masuk
+                      </button>
+                    </p>
+                  ) : null}
                 </div>
               )}
 
-              <div className="auth-google-panel">
-                <p className="auth-google-eyebrow">Akses aman dengan Google</p>
-                <button
-                  type="button"
-                  disabled={loginLoading || !googleEnabled}
-                  className="auth-google-btn"
-                  onClick={onLoginWithGoogle}
-                >
-                  <span className="auth-google-mark" aria-hidden>
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path
-                        fill="#4285F4"
-                        d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.37a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.99-4.3 2.99-7.52Z"
+              <form onSubmit={handleSubmit} className="auth-form auth-form--underline">
+                {mode === 'register' && (
+                  <div className="auth-underline-field">
+                    <label htmlFor="register-name" className="auth-underline-label">
+                      Nama :
+                    </label>
+                    <div className="auth-underline-control">
+                      <User className="auth-underline-icon" size={18} aria-hidden />
+                      <input
+                        id="register-name"
+                        type="text"
+                        autoComplete="name"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Nama lengkap"
+                        className="auth-underline-input"
                       />
-                      <path
-                        fill="#34A853"
-                        d="M12 22c2.7 0 4.97-.9 6.61-2.43l-3.23-2.51c-.9.6-2.04.95-3.38.95-2.6 0-4.8-1.76-5.59-4.12H3.08v2.59A9.99 9.99 0 0 0 12 22Z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M6.41 13.89a6.01 6.01 0 0 1 0-3.78V7.52H3.08a10.01 10.01 0 0 0 0 8.96l3.33-2.59Z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.99c1.47 0 2.79.51 3.83 1.5l2.86-2.86C16.96 3.01 14.7 2 12 2a9.99 9.99 0 0 0-8.92 5.52l3.33 2.59C7.2 7.75 9.4 5.99 12 5.99Z"
-                      />
-                    </svg>
-                  </span>
-                  <span>{loginLoading ? 'Menghubungkan...' : 'Lanjutkan dengan Google'}</span>
-                  {loginLoading ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
-                </button>
-                <p className="auth-google-note">
-                  Kami akan menyiapkan akun Anda otomatis, lalu mengarahkan Anda memilih peran yang sesuai.
-                </p>
-              </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="auth-underline-field">
+                  <label htmlFor="login-email" className="auth-underline-label">
+                    Email :
+                  </label>
+                  <div className="auth-underline-control">
+                    <Mail className="auth-underline-icon" size={18} aria-hidden />
+                    <input
+                      id="login-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={mode === 'login' ? 'nama@email.com' : 'nama@sekolah.sch.id'}
+                      className="auth-underline-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="auth-underline-field">
+                  <label htmlFor="login-password" className="auth-underline-label">
+                    Password :
+                  </label>
+                  <PasswordInput
+                    id="login-password"
+                    variant="underline"
+                    value={password}
+                    onChange={setPassword}
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                    placeholder={mode === 'register' ? 'Min. 8 karakter' : '••••••••'}
+                  />
+                </div>
+
+                {mode === 'register' && (
+                  <div className="auth-underline-field">
+                    <label htmlFor="register-confirm" className="auth-underline-label">
+                      Konfirmasi :
+                    </label>
+                    <PasswordInput
+                      id="register-confirm"
+                      variant="underline"
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      autoComplete="new-password"
+                      placeholder="Ulangi password"
+                    />
+                  </div>
+                )}
+
+                <div className="auth-submit-row">
+                  <button type="submit" disabled={loginLoading} className="auth-submit-btn">
+                    {loginLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" aria-hidden />
+                        {mode === 'login' ? 'Memverifikasi…' : 'Mendaftar…'}
+                      </>
+                    ) : mode === 'login' ? (
+                      'Masuk'
+                    ) : (
+                      'Daftar'
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <p className="auth-mode-toggle auth-mode-toggle--under-submit">
+                {mode === 'login' ? (
+                  <>
+                    Belum punya akun?{' '}
+                    <button type="button" className="auth-mode-link" onClick={() => switchMode('register')}>
+                      Daftar sekarang
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Sudah punya akun?{' '}
+                    <button type="button" className="auth-mode-link" onClick={() => switchMode('login')}>
+                      Masuk
+                    </button>
+                  </>
+                )}
+              </p>
+
+              {googleEnabled ? (
+                <>
+                  <div className="auth-or-divider" role="separator" aria-label="atau">
+                    <span>atau lanjutkan dengan Google</span>
+                  </div>
+                  <div className="auth-google-panel">
+                    <button
+                      type="button"
+                      disabled={loginLoading}
+                      className="auth-google-btn"
+                      onClick={onLoginWithGoogle}
+                    >
+                      <span className="auth-google-mark" aria-hidden>
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path
+                            fill="#4285F4"
+                            d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.37a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.99-4.3 2.99-7.52Z"
+                          />
+                          <path
+                            fill="#34A853"
+                            d="M12 22c2.7 0 4.97-.9 6.61-2.43l-3.23-2.51c-.9.6-2.04.95-3.38.95-2.6 0-4.8-1.76-5.59-4.12H3.08v2.59A9.99 9.99 0 0 0 12 22Z"
+                          />
+                          <path
+                            fill="#FBBC05"
+                            d="M6.41 13.89a6.01 6.01 0 0 1 0-3.78V7.52H3.08a10.01 10.01 0 0 0 0 8.96l3.33-2.59Z"
+                          />
+                          <path
+                            fill="#EA4335"
+                            d="M12 5.99c1.47 0 2.79.51 3.83 1.5l2.86-2.86C16.96 3.01 14.7 2 12 2a9.99 9.99 0 0 0-8.92 5.52l3.33 2.59C7.2 7.75 9.4 5.99 12 5.99Z"
+                          />
+                        </svg>
+                      </span>
+                      <span>{loginLoading ? 'Menghubungkan...' : 'Lanjutkan dengan Google'}</span>
+                      {loginLoading ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {IS_DEV ? (
+                <div className="auth-card-foot">
+                  <div className="auth-dev-instant">
+                    <button
+                      type="button"
+                      className="auth-dev-instant-toggle"
+                      aria-expanded={devInstantOpen}
+                      onClick={() => setDevInstantOpen((open) => !open)}
+                    >
+                      Mode development instan
+                    </button>
+                    {devInstantOpen && (
+                      <div className="auth-form-suggestions auth-form-suggestions--dev">
+                        <p className="auth-form-suggestions-label">
+                          {mode === 'login' ? 'Isi cepat akun demo' : 'Contoh pengisian'}
+                        </p>
+                        {mode === 'login' ? (
+                          <div className="auth-form-suggestion-chips">
+                            {LOGIN_FORM_SUGGESTIONS.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="auth-form-suggestion-chip"
+                                disabled={loginLoading}
+                                onClick={() => applyLoginSuggestion(item.email)}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="auth-form-suggestion-chip auth-form-suggestion-chip--solo"
+                            disabled={loginLoading}
+                            onClick={applyRegisterExample}
+                          >
+                            Isi contoh pendaftaran
+                          </button>
+                        )}
+                        <p className="auth-field-hint">
+                          Password demo: <strong>{DEV_DEMO_PASSWORD}</strong>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </main>
