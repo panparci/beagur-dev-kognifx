@@ -45,6 +45,7 @@ type TaskAssignment struct {
 	TemplateID       string              `json:"templateId"`
 	TeacherProfileID string              `json:"teacherProfileId"`
 	TeacherUserID    string              `json:"teacherUserId"`
+	TeacherName      string              `json:"teacherName,omitempty"`
 	Period           string              `json:"period"`
 	Status           string              `json:"status"`
 	IsLate           bool                `json:"isLate"`
@@ -360,10 +361,13 @@ func (s *Store) ListTaskAssignmentsAdmin(ctx context.Context, templateID string)
 	}
 	q := `
 		SELECT a.id::text, a.template_id::text, a.teacher_profile_id::text, a.teacher_user_id::text,
+		       COALESCE(tp.full_name, u.name, ''),
 		       a.period, a.status, a.is_late, a.assigned_at, a.due_at, a.submitted_at, a.responses,
 		       t.title, t.description, t.fields
 		FROM task_assignments a
-		JOIN task_templates t ON t.id = a.template_id`
+		JOIN task_templates t ON t.id = a.template_id
+		LEFT JOIN teacher_profiles tp ON tp.id = a.teacher_profile_id
+		LEFT JOIN users u ON u.id = a.teacher_user_id`
 	args := []any{}
 	if templateID != "" {
 		q += ` WHERE a.template_id = $1::uuid`
@@ -391,10 +395,13 @@ func (s *Store) ListMyTaskAssignments(ctx context.Context, userID string) ([]Tas
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.id::text, a.template_id::text, a.teacher_profile_id::text, a.teacher_user_id::text,
+		       COALESCE(tp.full_name, u.name, ''),
 		       a.period, a.status, a.is_late, a.assigned_at, a.due_at, a.submitted_at, a.responses,
 		       t.title, t.description, t.fields
 		FROM task_assignments a
 		JOIN task_templates t ON t.id = a.template_id
+		LEFT JOIN teacher_profiles tp ON tp.id = a.teacher_profile_id
+		LEFT JOIN users u ON u.id = a.teacher_user_id
 		WHERE a.teacher_user_id = $1::uuid
 		ORDER BY
 			CASE a.status WHEN 'PENDING' THEN 0 WHEN 'OVERDUE' THEN 1 ELSE 2 END,
@@ -414,7 +421,7 @@ func scanTaskAssignments(rows pgx.Rows) ([]TaskAssignment, error) {
 		var due, submitted pgtype.Timestamptz
 		var respRaw, fieldsRaw []byte
 		if err := rows.Scan(
-			&a.ID, &a.TemplateID, &a.TeacherProfileID, &a.TeacherUserID,
+			&a.ID, &a.TemplateID, &a.TeacherProfileID, &a.TeacherUserID, &a.TeacherName,
 			&a.Period, &a.Status, &a.IsLate, &a.AssignedAt, &due, &submitted, &respRaw,
 			&a.Title, &a.Description, &fieldsRaw,
 		); err != nil {

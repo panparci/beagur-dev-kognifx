@@ -204,7 +204,7 @@ export function AdminReconciliationTab() {
                       <Badge variant={statusVariant(u.status)}>{u.status}</Badge>
                     </div>
                     <p className="text-xs text-bea-sage-muted mt-1">
-                      {u.direction} · {u.matchedCount}/{u.totalLines} cocok
+                      {u.direction === 'INCOMING' ? 'Masuk' : 'Keluar'} · {u.matchedCount}/{u.totalLines} cocok
                     </p>
                   </button>
                 </li>
@@ -217,6 +217,9 @@ export function AdminReconciliationTab() {
       {selectedId ? (
         <Card className="p-4 mt-4">
           <h3 className="font-semibold text-bea-ink mb-3">Review baris</h3>
+          {lines.length === 0 ? (
+            <p className="text-sm text-bea-sage-muted">Tidak ada transaksi yang menunggu tinjauan.</p>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -229,7 +232,11 @@ export function AdminReconciliationTab() {
                 </tr>
               </thead>
               <tbody>
-                {lines.map((line) => (
+                {lines.map((line) => {
+                  const canConfirm =
+                    line.matchStatus === 'SUGGESTED' ||
+                    Boolean(line.suggestedDonationId || line.suggestedLedgerId);
+                  return (
                   <tr key={line.id} className="border-b border-bea-line/60">
                     <td className="py-2 pr-2 whitespace-nowrap">{line.transactionDate}</td>
                     <td className="py-2 pr-2 tabular-nums">Rp {line.amount.toLocaleString('id-ID')}</td>
@@ -252,26 +259,28 @@ export function AdminReconciliationTab() {
                                 void reconciliationService
                                   .confirmSuggestedDonor(line.id)
                                   .then(refreshLines)
-                                  .then(() => toast.success('Donasi baru dari donatur dikenal'))
+                                  .then(() =>
+                                    toast.success('Donasi baru dari donatur dikenal tercatat terverifikasi'),
+                                  )
                                   .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
                               }
                             >
                               Catat donasi
                             </Button>
-                          ) : (
+                          ) : canConfirm ? (
                             <Button
                               size="sm"
                               onClick={() =>
                                 void reconciliationService
                                   .confirmLine(line.id)
                                   .then(refreshLines)
-                                  .then(() => toast.success('Baris dikonfirmasi'))
+                                  .then(() => toast.success('Kecocokan dikonfirmasi'))
                                   .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
                               }
                             >
-                              Konfirmasi
+                              {line.direction === 'OUTGOING' ? 'Konfirmasi penyaluran' : 'Konfirmasi'}
                             </Button>
-                          )}
+                          ) : null}
                           {line.direction === 'INCOMING' && line.matchStatus === 'UNMATCHED' ? (
                             <Button
                               size="sm"
@@ -292,7 +301,7 @@ export function AdminReconciliationTab() {
                               void reconciliationService
                                 .ignoreLine(line.id)
                                 .then(refreshLines)
-                                .then(() => toast.success('Baris diabaikan'))
+                                .then(() => toast.success('Baris diabaikan (biaya/admin/dll)'))
                                 .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'))
                             }
                           >
@@ -302,16 +311,21 @@ export function AdminReconciliationTab() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          )}
         </Card>
       ) : null}
 
       {donorLineId ? (
         <Card className="p-4 mt-4 space-y-3 max-w-lg">
           <h3 className="font-semibold text-bea-ink">Buat donatur dari mutasi walk-in</h3>
+          <p className="text-sm text-bea-sage-muted">
+            Rekening pengirim akan disimpan agar transfer berikutnya bisa dicocokkan otomatis.
+          </p>
           <label className="block">
             <span className={beaFieldLabel}>Nama</span>
             <input className={beaInput} value={donorName} onChange={(e) => setDonorName(e.target.value)} />
@@ -330,7 +344,7 @@ export function AdminReconciliationTab() {
             <Button
               onClick={() => {
                 if (!donorName.trim() || !donorEmail.trim()) {
-                  toast.error('Nama dan email wajib');
+                  toast.error('Nama dan email donatur wajib diisi');
                   return;
                 }
                 void reconciliationService
@@ -340,7 +354,7 @@ export function AdminReconciliationTab() {
                   })
                   .then(refreshLines)
                   .then(() => {
-                    toast.success('Donatur + donasi terverifikasi dibuat');
+                    toast.success('Akun donatur baru dibuat & donasi tercatat terverifikasi');
                     setDonorLineId(null);
                   })
                   .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal'));

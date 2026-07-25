@@ -29,6 +29,7 @@ export type TaskAssignment = {
   templateId: string;
   teacherProfileId: string;
   teacherUserId: string;
+  teacherName?: string;
   period: string;
   status: 'PENDING' | 'SUBMITTED' | 'OVERDUE';
   isLate?: boolean;
@@ -50,6 +51,7 @@ export const taskService = {
     targetMode?: string;
     fields: TaskFormField[];
     isActive?: boolean;
+    dueDate?: string | null;
   }) => apiPost<{ template: TaskTemplate; assignedCount: number }>('/api/v1/admin/tasks/templates', body),
   setActive: (id: string, isActive: boolean) =>
     apiPatch<{ template: TaskTemplate; assignedCount: number }>(`/api/v1/admin/tasks/templates/${id}`, { isActive }),

@@ -452,6 +452,9 @@ func (s *Store) ConfirmBankLine(ctx context.Context, lineID, reviewerID string, 
 
 	donID := firstNonNil(donationID, sugDon)
 	ledID := firstNonNil(ledgerID, sugLed)
+	if (donID == nil || *donID == "") && (ledID == nil || *ledID == "") {
+		return BankTransactionLine{}, fmt.Errorf("%w: konfirmasi membutuhkan saran invoice/penyaluran", ErrInvalidState)
+	}
 
 	_, err = tx.Exec(ctx, `
 		UPDATE bank_transaction_lines
