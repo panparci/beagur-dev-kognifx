@@ -17,6 +17,11 @@ import {
   reconciliationService,
 } from '../../services/reconciliationService';
 import { parseJagoPdfFile } from '../../utils/jagoStatementParser';
+import {
+  formatIdrSigned,
+  jagoLineDisplay,
+  jagoPeriodSummary,
+} from '../../utils/reconLineDisplay';
 
 const statusVariant = (s: string) => {
   if (s === 'MATCHED' || s === 'COMPLETED') return 'success' as const;
@@ -128,6 +133,8 @@ export function AdminReconciliationTab() {
     setLines(await reconciliationService.listLines(selectedId));
     await reload();
   };
+
+  const period = jagoPeriodSummary(lines);
 
   return (
     <div className={showTab(activeTab, ADMIN_RECONCILIATION_TAB, 'fill')}>
@@ -270,9 +277,19 @@ export function AdminReconciliationTab() {
       {selectedId ? (
         <Card className="p-4 mt-4 mb-6">
           <h3 className="font-semibold text-bea-ink mb-1 text-base">3. Review baris</h3>
-          <p className="text-sm text-bea-sage-muted mb-3">
-            Gulir ke bawah untuk melihat semua mutasi. Status UNMATCHED bisa dibuat donatur atau diabaikan.
-          </p>
+          {period ? (
+            <p className="text-sm text-bea-sage-muted mb-3 leading-relaxed">
+              Showing IDR · {period.from} – {period.to}
+              <span className="mx-1.5 text-bea-line">·</span>
+              {period.count.toLocaleString('id-ID')} transaksi
+              <span className="mx-1.5 text-bea-line">·</span>
+              Total Rp {period.total.toLocaleString('id-ID')}
+              <span className="mx-1.5 text-bea-line">·</span>
+              {period.matched}/{period.count} cocok
+            </p>
+          ) : (
+            <p className="text-sm text-bea-sage-muted mb-3">Belum ada mutasi di upload ini.</p>
+          )}
           {lines.length === 0 ? (
             <p className="text-sm text-bea-sage-muted">Tidak ada transaksi yang menunggu tinjauan.</p>
           ) : (
@@ -280,10 +297,12 @@ export function AdminReconciliationTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-bea-sage-muted border-b border-bea-line">
-                  <th className="py-2 pr-2">Tanggal</th>
-                  <th className="py-2 pr-2">Jumlah</th>
-                  <th className="py-2 pr-2">Lawan transaksi</th>
-                  <th className="py-2 pr-2">Status</th>
+                  <th className="py-2 pr-3 whitespace-nowrap">Date & Time</th>
+                  <th className="py-2 pr-3">Source/Destination</th>
+                  <th className="py-2 pr-3">Transaction Details</th>
+                  <th className="py-2 pr-3">Notes</th>
+                  <th className="py-2 pr-3 text-right whitespace-nowrap">Amount</th>
+                  <th className="py-2 pr-3">Status</th>
                   <th className="py-2">Aksi</th>
                 </tr>
               </thead>
@@ -292,18 +311,35 @@ export function AdminReconciliationTab() {
                   const canConfirm =
                     line.matchStatus === 'SUGGESTED' ||
                     Boolean(line.suggestedDonationId || line.suggestedLedgerId);
+                  const d = jagoLineDisplay(line);
                   return (
-                  <tr key={line.id} className="border-b border-bea-line/60">
-                    <td className="py-2 pr-2 whitespace-nowrap">{line.transactionDate}</td>
-                    <td className="py-2 pr-2 tabular-nums">Rp {line.amount.toLocaleString('id-ID')}</td>
-                    <td className="py-2 pr-2">
-                      <div>{line.counterpartyName || '—'}</div>
-                      <div className="text-xs text-bea-sage-muted">{line.counterpartyAccount}</div>
+                  <tr key={line.id} className="border-b border-bea-line/60 align-top">
+                    <td className="py-2.5 pr-3 whitespace-nowrap">
+                      <div className="text-bea-ink">{d.dateLabel}</div>
+                      {d.time ? <div className="text-xs text-bea-sage-muted">{d.time}</div> : null}
                     </td>
-                    <td className="py-2 pr-2">
+                    <td className="py-2.5 pr-3 min-w-[10rem]">
+                      <div className="font-medium text-bea-ink">{line.counterpartyName || '—'}</div>
+                      <div className="text-xs text-bea-sage-muted leading-snug">
+                        {[d.bank, line.counterpartyAccount].filter(Boolean).join(' ')}
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <div>{d.detail}</div>
+                      {d.txnId ? <div className="text-xs text-bea-sage-muted">ID# {d.txnId}</div> : null}
+                    </td>
+                    <td className="py-2.5 pr-3 text-bea-sage-muted">{d.notes || '—'}</td>
+                    <td
+                      className={`py-2.5 pr-3 text-right tabular-nums font-medium whitespace-nowrap ${
+                        line.direction === 'OUTGOING' ? 'text-rose-700' : 'text-emerald-700'
+                      }`}
+                    >
+                      {formatIdrSigned(line.amount, line.direction)}
+                    </td>
+                    <td className="py-2.5 pr-3">
                       <Badge variant={statusVariant(line.matchStatus)}>{line.matchStatus}</Badge>
                     </td>
-                    <td className="py-2">
+                    <td className="py-2.5">
                       {line.matchStatus === 'MATCHED' || line.matchStatus === 'IGNORED' ? (
                         <span className="text-xs text-bea-sage-muted">Selesai</span>
                       ) : (

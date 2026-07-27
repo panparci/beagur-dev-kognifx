@@ -136,7 +136,11 @@ export function parseJagoStatementText(rawText: string, direction: BankDirection
     if (restAfterDate) blockParts.push(restAfterDate);
 
     let j = i + 1;
-    if (j < lines.length && /^\d{1,2}:\d{2}$/.test(lines[j])) j += 1;
+    let txnTime = '';
+    if (j < lines.length && /^\d{1,2}:\d{2}$/.test(lines[j])) {
+      txnTime = lines[j];
+      j += 1;
+    }
 
     while (j < lines.length && !isTxnDateLine(lines[j])) {
       if (!SKIP_LINE_RE.test(lines[j])) blockParts.push(lines[j]);
@@ -145,6 +149,9 @@ export function parseJagoStatementText(rawText: string, direction: BankDirection
     }
     i = j;
 
+    if (txnTime && !blockParts.some((p) => /\b\d{1,2}:\d{2}\b/.test(p))) {
+      blockParts.unshift(txnTime);
+    }
     const blockText = blockParts.join(' ');
     const amountMatch = blockText.match(AMOUNT_IN_LINE_RE);
     if (!amountMatch) continue;
