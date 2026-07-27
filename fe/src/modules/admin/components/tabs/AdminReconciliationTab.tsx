@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { FileUp } from 'lucide-react';
 import Card from '@core/ui/Card';
 import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
@@ -35,14 +36,17 @@ export function AdminReconciliationTab() {
   const { activeTab } = usePortalNav();
   const toast = useToast();
   const active = activeTab === ADMIN_RECONCILIATION_TAB;
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<BankStatementUpload[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lines, setLines] = useState<BankTransactionLine[]>([]);
   const [direction, setDirection] = useState<BankDirection>('INCOMING');
   const [fileName, setFileName] = useState('rekening-koran.csv');
+  const [pickedLabel, setPickedLabel] = useState('');
   const [csvText, setCsvText] = useState('');
   const [showCsv, setShowCsv] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [donorLineId, setDonorLineId] = useState<string | null>(null);
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
@@ -89,6 +93,7 @@ export function AdminReconciliationTab() {
     const dir = guessDirectionFromName(file.name) ?? direction;
     setDirection(dir);
     setFileName(file.name);
+    setPickedLabel(file.name);
     setLoading(true);
     try {
       const parsed = await parseJagoPdfFile(file, dir);
@@ -103,6 +108,7 @@ export function AdminReconciliationTab() {
       toast.error(e instanceof Error ? e.message : 'Gagal membaca PDF Jago');
     } finally {
       setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -131,34 +137,81 @@ export function AdminReconciliationTab() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4 space-y-3">
-          <h3 className="font-semibold text-bea-ink">Upload rekening koran (Bank Jago PDF)</h3>
-          <p className="text-sm text-bea-sage-muted">
-            Format Pockets Transactions History. Pocket Donasi → masuk; Transfer → keluar. Movement antar pocket diabaikan.
-          </p>
+        <Card className="p-4 space-y-4">
+          <div>
+            <h3 className="font-semibold text-bea-ink text-base">1. Unggah PDF rekening koran Bank Jago</h3>
+            <p className="text-sm text-bea-sage-muted mt-1 leading-relaxed">
+              Ambil file PDF dari aplikasi Jago (Pockets Transactions History). File Donasi = uang masuk; file Transfer = uang keluar.
+            </p>
+          </div>
+
           <label className="block">
-            <span className={beaFieldLabel}>Arah (otomatis dari nama file bila bisa)</span>
+            <span className={beaFieldLabel}>Jenis mutasi</span>
             <select className={beaSelect} value={direction} onChange={(e) => setDirection(e.target.value as BankDirection)}>
-              <option value="INCOMING">Masuk (donatur → yayasan)</option>
-              <option value="OUTGOING">Keluar (yayasan → guru)</option>
+              <option value="INCOMING">Masuk — donatur ke yayasan</option>
+              <option value="OUTGOING">Keluar — yayasan ke guru</option>
             </select>
+            <span className="mt-1 block text-xs text-bea-sage-muted">Biasanya terisi otomatis dari nama file.</span>
           </label>
-          <label className="block">
-            <span className={beaFieldLabel}>PDF Jago</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className={beaInput}
-              disabled={loading}
-              onChange={(e) => void handlePdf(e.target.files?.[0] ?? null)}
-            />
-          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="sr-only"
+            disabled={loading}
+            onChange={(e) => void handlePdf(e.target.files?.[0] ?? null)}
+          />
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              void handlePdf(e.dataTransfer.files?.[0] ?? null);
+            }}
+            className={`flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-4 py-10 text-center transition-colors ${
+              dragOver
+                ? 'border-bea-copper bg-bea-ivory-light'
+                : 'border-bea-line bg-bea-ivory/40 hover:border-bea-copper/60 hover:bg-bea-ivory-light'
+            } ${loading ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-bea-copper/15 text-bea-copper">
+              <FileUp size={28} aria-hidden />
+            </span>
+            <span className="text-base font-semibold text-bea-ink">
+              {loading ? 'Sedang memproses PDF…' : 'Klik di sini untuk pilih PDF'}
+            </span>
+            <span className="max-w-sm text-sm text-bea-sage-muted leading-relaxed">
+              Atau tarik file PDF lalu lepaskan di kotak ini. Hanya file berakhiran .pdf.
+            </span>
+            {pickedLabel ? (
+              <span className="mt-1 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-bea-ink border border-bea-line">
+                File: {pickedLabel}
+              </span>
+            ) : null}
+          </button>
+
           <button
             type="button"
             className="text-sm text-bea-copper underline"
             onClick={() => setShowCsv((v) => !v)}
           >
-            {showCsv ? 'Sembunyikan CSV manual' : 'Atau paste CSV manual'}
+            {showCsv ? 'Sembunyikan CSV manual' : 'Atau paste CSV manual (opsional)'}
           </button>
           {showCsv ? (
             <>
@@ -181,11 +234,11 @@ export function AdminReconciliationTab() {
               </Button>
             </>
           ) : null}
-          {loading ? <p className="text-sm text-bea-sage-muted">Memproses file…</p> : null}
         </Card>
 
         <Card className="p-4 space-y-3">
-          <h3 className="font-semibold text-bea-ink">Riwayat upload</h3>
+          <h3 className="font-semibold text-bea-ink text-base">2. Riwayat upload</h3>
+          <p className="text-sm text-bea-sage-muted">Klik salah satu untuk melihat & meninjau baris di bawah.</p>
           {uploads.length === 0 ? (
             <p className="text-sm text-bea-sage-muted">Belum ada upload.</p>
           ) : (
@@ -215,8 +268,11 @@ export function AdminReconciliationTab() {
       </div>
 
       {selectedId ? (
-        <Card className="p-4 mt-4">
-          <h3 className="font-semibold text-bea-ink mb-3">Review baris</h3>
+        <Card className="p-4 mt-4 mb-6">
+          <h3 className="font-semibold text-bea-ink mb-1 text-base">3. Review baris</h3>
+          <p className="text-sm text-bea-sage-muted mb-3">
+            Gulir ke bawah untuk melihat semua mutasi. Status UNMATCHED bisa dibuat donatur atau diabaikan.
+          </p>
           {lines.length === 0 ? (
             <p className="text-sm text-bea-sage-muted">Tidak ada transaksi yang menunggu tinjauan.</p>
           ) : (
