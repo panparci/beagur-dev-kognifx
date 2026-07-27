@@ -114,7 +114,7 @@ func (s *Store) ListBankLines(ctx context.Context, uploadID string) ([]BankTrans
 		       reviewed_by_user_id::text, reviewed_at
 		FROM bank_transaction_lines
 		WHERE upload_id = $1::uuid
-		ORDER BY transaction_date, amount`, uploadID)
+		ORDER BY transaction_date DESC, created_at DESC`, uploadID)
 	if err != nil {
 		return nil, err
 	}
