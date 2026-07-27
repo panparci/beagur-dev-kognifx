@@ -16,7 +16,7 @@ export function formatIdrSigned(amount: number, direction: 'INCOMING' | 'OUTGOIN
 }
 
 const BANK_RE =
-  /\b(Bank\s+[\w.]+(?:\s+[\w.]+){0,3}|BCA(?:\s+Digital)?|BRI|BNI|BTN|Mandiri|CIMB|Permata|Danamon|Jago|Seabank|KEB Hana Bank)\b/i;
+  /\b(Bank\s+[A-Za-z][\w.]*(?:\s+[A-Za-z][\w.]*){0,3}|BCA(?:\s+Digital)?|BRI|BNI|BTN|Mandiri|CIMB|Permata|Danamon|Jago|Seabank|KEB Hana Bank)\b/i;
 
 /** Derive PDF-like columns from stored recon line (works for existing uploads). */
 export function jagoLineDisplay(line: BankTransactionLine) {
