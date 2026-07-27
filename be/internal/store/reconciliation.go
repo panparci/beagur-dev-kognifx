@@ -25,6 +25,10 @@ type BankStatementUpload struct {
 	MatchedCount     int       `json:"matchedCount"`
 	Status           string    `json:"status"`
 	CreatedAt        time.Time `json:"createdAt"`
+	PeriodStart      *string   `json:"periodStart,omitempty"`
+	PeriodEnd        *string   `json:"periodEnd,omitempty"`
+	BalanceAsOf      *string   `json:"balanceAsOf,omitempty"`
+	LatestBalance    *int64    `json:"latestBalance,omitempty"`
 }
 
 type BankTransactionLine struct {
@@ -59,6 +63,10 @@ type CreateBankUploadInput struct {
 	Direction        string          `json:"direction"`
 	UploadedByUserID string          `json:"-"`
 	Lines            []BankLineInput `json:"lines"`
+	PeriodStart      *string         `json:"periodStart,omitempty"`
+	PeriodEnd        *string         `json:"periodEnd,omitempty"`
+	BalanceAsOf      *string         `json:"balanceAsOf,omitempty"`
+	LatestBalance    *int64          `json:"latestBalance,omitempty"`
 }
 
 type pendingDonationMatch struct {
@@ -82,7 +90,8 @@ func (s *Store) ListBankUploads(ctx context.Context) ([]BankStatementUpload, err
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id::text, file_name, direction, uploaded_by_user_id::text,
-		       total_lines, matched_count, status, created_at
+		       total_lines, matched_count, status, created_at,
+		       period_start::text, period_end::text, balance_as_of::text, latest_balance
 		FROM bank_statement_uploads
 		ORDER BY created_at DESC`)
 	if err != nil {
@@ -93,7 +102,8 @@ func (s *Store) ListBankUploads(ctx context.Context) ([]BankStatementUpload, err
 	for rows.Next() {
 		var u BankStatementUpload
 		if err := rows.Scan(&u.ID, &u.FileName, &u.Direction, &u.UploadedByUserID,
-			&u.TotalLines, &u.MatchedCount, &u.Status, &u.CreatedAt); err != nil {
+			&u.TotalLines, &u.MatchedCount, &u.Status, &u.CreatedAt,
+			&u.PeriodStart, &u.PeriodEnd, &u.BalanceAsOf, &u.LatestBalance); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -178,13 +188,22 @@ func (s *Store) CreateBankUpload(ctx context.Context, in CreateBankUploadInput) 
 
 	var upload BankStatementUpload
 	err = tx.QueryRow(ctx, `
-		INSERT INTO bank_statement_uploads (file_name, direction, uploaded_by_user_id, total_lines)
-		VALUES ($1, $2, $3::uuid, $4)
+		INSERT INTO bank_statement_uploads (
+			file_name, direction, uploaded_by_user_id, total_lines,
+			period_start, period_end, balance_as_of, latest_balance
+		)
+		VALUES (
+			$1, $2, $3::uuid, $4,
+			NULLIF($5, '')::date, NULLIF($6, '')::date, NULLIF($7, '')::date, $8
+		)
 		RETURNING id::text, file_name, direction, uploaded_by_user_id::text,
-		          total_lines, matched_count, status, created_at`,
+		          total_lines, matched_count, status, created_at,
+		          period_start::text, period_end::text, balance_as_of::text, latest_balance`,
 		fileName, dir, in.UploadedByUserID, len(in.Lines),
+		ptrStr(in.PeriodStart), ptrStr(in.PeriodEnd), ptrStr(in.BalanceAsOf), in.LatestBalance,
 	).Scan(&upload.ID, &upload.FileName, &upload.Direction, &upload.UploadedByUserID,
-		&upload.TotalLines, &upload.MatchedCount, &upload.Status, &upload.CreatedAt)
+		&upload.TotalLines, &upload.MatchedCount, &upload.Status, &upload.CreatedAt,
+		&upload.PeriodStart, &upload.PeriodEnd, &upload.BalanceAsOf, &upload.LatestBalance)
 	if err != nil {
 		return BankStatementUpload{}, err
 	}

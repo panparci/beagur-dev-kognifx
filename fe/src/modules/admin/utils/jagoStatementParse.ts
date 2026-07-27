@@ -39,6 +39,29 @@ function toIsoDate(day: string, mon: string, year: string): string | null {
   return `${year}-${m}-${day.padStart(2, '0')}`;
 }
 
+/** Header block from Jago PDF: period range + latest balance. */
+export type JagoStatementMeta = {
+  periodStart: string | null;
+  periodEnd: string | null;
+  balanceAsOf: string | null;
+  latestBalance: number | null;
+};
+
+const PERIOD_BAL_RE =
+  /(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s*-\s*(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+IDR\s+([\d.,]+)/i;
+const BALANCE_AS_OF_RE = /Latest Balance per\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/i;
+
+export function parseJagoStatementMeta(rawText: string): JagoStatementMeta {
+  const period = rawText.match(PERIOD_BAL_RE);
+  const asOf = rawText.match(BALANCE_AS_OF_RE);
+  return {
+    periodStart: period ? toIsoDate(period[1], period[2], period[3]) : null,
+    periodEnd: period ? toIsoDate(period[4], period[5], period[6]) : null,
+    balanceAsOf: asOf ? toIsoDate(asOf[1], asOf[2], asOf[3]) : null,
+    latestBalance: period ? parseIdAmount(period[7]) || null : null,
+  };
+}
+
 function isPeriodHeader(rest: string): boolean {
   return /^\s*-\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/.test(rest) || /\bIDR\b/i.test(rest);
 }

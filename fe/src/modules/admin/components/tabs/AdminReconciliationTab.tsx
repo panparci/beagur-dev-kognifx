@@ -18,9 +18,10 @@ import {
 } from '../../services/reconciliationService';
 import { parseJagoPdfFile } from '../../utils/jagoStatementParser';
 import {
+  formatIdrPlain,
   formatIdrSigned,
   jagoLineDisplay,
-  jagoPeriodSummary,
+  jagoReviewSummary,
 } from '../../utils/reconLineDisplay';
 
 const statusVariant = (s: string) => {
@@ -77,12 +78,30 @@ export function AdminReconciliationTab() {
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal memuat baris'));
   }, [selectedId]);
 
-  const submitLines = async (name: string, dir: BankDirection, parsed: ReturnType<typeof parseBankCsv>) => {
+  const submitLines = async (
+    name: string,
+    dir: BankDirection,
+    parsed: ReturnType<typeof parseBankCsv>,
+    meta?: {
+      periodStart?: string | null;
+      periodEnd?: string | null;
+      balanceAsOf?: string | null;
+      latestBalance?: number | null;
+    },
+  ) => {
     if (parsed.length === 0) {
       toast.error('Tidak ada mutasi yang bisa diparse dari file.');
       return;
     }
-    const upload = await reconciliationService.createUpload({ fileName: name, direction: dir, lines: parsed });
+    const upload = await reconciliationService.createUpload({
+      fileName: name,
+      direction: dir,
+      lines: parsed,
+      periodStart: meta?.periodStart,
+      periodEnd: meta?.periodEnd,
+      balanceAsOf: meta?.balanceAsOf,
+      latestBalance: meta?.latestBalance,
+    });
     toast.success(`${upload.matchedCount}/${upload.totalLines} baris cocok otomatis.`, 'Upload berhasil');
     setCsvText('');
     await reload();
@@ -101,14 +120,14 @@ export function AdminReconciliationTab() {
     setPickedLabel(file.name);
     setLoading(true);
     try {
-      const parsed = await parseJagoPdfFile(file, dir);
+      const { lines: parsed, meta } = await parseJagoPdfFile(file, dir);
       if (parsed.length === 0) {
         toast.error(
           'Tidak ada mutasi Incoming/Outgoing Transfer. Cek arah (masuk/keluar) atau pastikan PDF punya lapisan teks (bukan scan gambar).',
         );
         return;
       }
-      await submitLines(file.name, dir, parsed);
+      await submitLines(file.name, dir, parsed, meta);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal membaca PDF Jago');
     } finally {
@@ -134,7 +153,10 @@ export function AdminReconciliationTab() {
     await reload();
   };
 
-  const period = jagoPeriodSummary(lines);
+  const period = jagoReviewSummary(
+    lines,
+    uploads.find((u) => u.id === selectedId) ?? null,
+  );
 
   return (
     <div className={showTab(activeTab, ADMIN_RECONCILIATION_TAB, 'fill')}>
@@ -278,15 +300,23 @@ export function AdminReconciliationTab() {
         <Card className="p-4 mt-4 mb-6">
           <h3 className="font-semibold text-bea-ink mb-1 text-base">3. Review baris</h3>
           {period ? (
-            <p className="text-sm text-bea-sage-muted mb-3 leading-relaxed">
-              Showing IDR · {period.from} – {period.to}
-              <span className="mx-1.5 text-bea-line">·</span>
-              {period.count.toLocaleString('id-ID')} transaksi
-              <span className="mx-1.5 text-bea-line">·</span>
-              Total Rp {period.total.toLocaleString('id-ID')}
-              <span className="mx-1.5 text-bea-line">·</span>
-              {period.matched}/{period.count} cocok
-            </p>
+            <div className="text-sm text-bea-sage-muted mb-3 leading-relaxed space-y-0.5">
+              <p>
+                Showing IDR transaction from {period.from} – {period.to}
+              </p>
+              {period.latestBalance != null && period.balanceAsOf ? (
+                <p>
+                  Latest Balance per {period.balanceAsOf}
+                  <span className="mx-1.5 text-bea-line">·</span>
+                  IDR {formatIdrPlain(period.latestBalance)}
+                </p>
+              ) : null}
+              <p>
+                {period.count.toLocaleString('id-ID')} transaksi
+                <span className="mx-1.5 text-bea-line">·</span>
+                {period.matched}/{period.count} cocok
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-bea-sage-muted mb-3">Belum ada mutasi di upload ini.</p>
           )}

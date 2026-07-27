@@ -12,6 +12,10 @@ export type BankStatementUpload = {
   matchedCount: number;
   status: 'REVIEW_NEEDED' | 'COMPLETED';
   createdAt: string;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  balanceAsOf?: string | null;
+  latestBalance?: number | null;
 };
 
 export type BankTransactionLine = {
@@ -43,8 +47,15 @@ export const reconciliationService = {
   listUploads: () => apiGet<BankStatementUpload[]>('/api/v1/admin/reconciliation/uploads'),
   listLines: (uploadId: string) =>
     apiGet<BankTransactionLine[]>(`/api/v1/admin/reconciliation/uploads/${uploadId}/lines`),
-  createUpload: (body: { fileName: string; direction: BankDirection; lines: BankLineInput[] }) =>
-    apiPost<BankStatementUpload>('/api/v1/admin/reconciliation/uploads', body),
+  createUpload: (body: {
+    fileName: string;
+    direction: BankDirection;
+    lines: BankLineInput[];
+    periodStart?: string | null;
+    periodEnd?: string | null;
+    balanceAsOf?: string | null;
+    latestBalance?: number | null;
+  }) => apiPost<BankStatementUpload>('/api/v1/admin/reconciliation/uploads', body),
   confirmLine: (lineId: string, body?: { donationId?: string; ledgerId?: string }) =>
     apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/confirm`, body ?? {}),
   ignoreLine: (lineId: string) =>

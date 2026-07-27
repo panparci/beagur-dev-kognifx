@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { BankDirection, BankLineInput } from '../services/reconciliationService';
-import { parseJagoStatementText } from './jagoStatementParse';
+import { parseJagoStatementMeta, parseJagoStatementText, type JagoStatementMeta } from './jagoStatementParse';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -42,9 +42,18 @@ export async function extractPdfText(file: File): Promise<string> {
   return lines.join('\n');
 }
 
-export async function parseJagoPdfFile(file: File, direction: BankDirection): Promise<BankLineInput[]> {
+export type JagoPdfParseResult = {
+  lines: BankLineInput[];
+  meta: JagoStatementMeta;
+};
+
+export async function parseJagoPdfFile(file: File, direction: BankDirection): Promise<JagoPdfParseResult> {
   const text = await extractPdfText(file);
-  return parseJagoStatementText(text, direction);
+  return {
+    lines: parseJagoStatementText(text, direction),
+    meta: parseJagoStatementMeta(text),
+  };
 }
 
-export { parseJagoStatementText };
+export { parseJagoStatementText, parseJagoStatementMeta };
+export type { JagoStatementMeta };

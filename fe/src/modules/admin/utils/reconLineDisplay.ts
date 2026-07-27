@@ -1,4 +1,4 @@
-import type { BankTransactionLine } from '../services/reconciliationService';
+import type { BankStatementUpload, BankTransactionLine } from '../services/reconciliationService';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -13,6 +13,10 @@ export function formatJagoDate(iso: string): string {
 export function formatIdrSigned(amount: number, direction: 'INCOMING' | 'OUTGOING'): string {
   const n = amount.toLocaleString('id-ID');
   return direction === 'OUTGOING' ? `-${n}` : `+${n}`;
+}
+
+export function formatIdrPlain(amount: number): string {
+  return amount.toLocaleString('id-ID');
 }
 
 const BANK_RE =
@@ -42,16 +46,19 @@ export function jagoLineDisplay(line: BankTransactionLine) {
   };
 }
 
-export function jagoPeriodSummary(lines: BankTransactionLine[]) {
-  if (lines.length === 0) return null;
+/** Prefer PDF header meta on upload; fall back to min/max of reviewed lines. */
+export function jagoReviewSummary(lines: BankTransactionLine[], upload?: BankStatementUpload | null) {
+  if (lines.length === 0 && !upload?.periodStart) return null;
   const dates = lines.map((l) => l.transactionDate).sort();
-  const total = lines.reduce((s, l) => s + l.amount, 0);
   const matched = lines.filter((l) => l.matchStatus === 'MATCHED').length;
+  const fromIso = upload?.periodStart || dates[0] || '';
+  const toIso = upload?.periodEnd || dates[dates.length - 1] || '';
   return {
-    from: formatJagoDate(dates[0]!),
-    to: formatJagoDate(dates[dates.length - 1]!),
+    from: fromIso ? formatJagoDate(fromIso) : '—',
+    to: toIso ? formatJagoDate(toIso) : '—',
     count: lines.length,
-    total,
     matched,
+    balanceAsOf: upload?.balanceAsOf ? formatJagoDate(upload.balanceAsOf) : null,
+    latestBalance: upload?.latestBalance ?? null,
   };
 }

@@ -1,4 +1,4 @@
-import { parseJagoStatementText } from '../src/modules/admin/utils/jagoStatementParse.ts';
+import { parseJagoStatementMeta, parseJagoStatementText } from '../src/modules/admin/utils/jagoStatementParse.ts';
 
 const vertical = `
 18 Jul 2025
@@ -49,4 +49,17 @@ console.assert(vIn.length === 1 && vIn[0].amount === 1_000_000 && vIn[0].counter
 console.assert(vOut.length === 1 && vOut[0].amount === 200_000, 'vertical out');
 console.assert(hIn.length === 2 && hIn[0].amount === 1_000_000 && hIn[0].counterpartyAccount === '90370136906', 'horizontal in');
 console.assert(hOut.length === 1 && hOut[0].amount === 200_000 && hOut[0].counterpartyName.includes('YOHANES'), 'horizontal out');
-console.log('jagoStatementParse ok', { vIn: vIn[0], hIn: hIn[0], hOut: hOut[0] });
+
+const meta = parseJagoStatementMeta(`
+Showing IDR transaction from Latest Balance per 18 Jul 2026
+14 Jul 2026 - 19 Jul 2026 IDR 6.567.793
+`);
+console.assert(
+  meta.periodStart === '2026-07-14' &&
+    meta.periodEnd === '2026-07-19' &&
+    meta.balanceAsOf === '2026-07-18' &&
+    meta.latestBalance === 6_567_793,
+  meta,
+);
+
+console.log('jagoStatementParse ok', { vIn: vIn[0], hIn: hIn[0], hOut: hOut[0], meta });
