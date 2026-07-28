@@ -7,7 +7,7 @@ import { PortalSectionHead } from '@core/ui/portal/PortalPrimitives';
 import { showTab } from '@core/ui/tabPanel';
 import { usePortalNav } from '@core/routing/usePortalNav';
 import { useToast } from '@core/ui/toast/ToastProvider';
-import { beaFieldLabel, beaInput, beaSelect, beaTextarea } from '@core/ui/beaTheme';
+import { beaFieldLabel, beaInput, beaTextarea } from '@core/ui/beaTheme';
 import { ADMIN_RECONCILIATION_TAB } from '@core/constants/tabs';
 import {
   BankDirection,
