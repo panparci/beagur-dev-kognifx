@@ -2484,6 +2484,18 @@
   text-align: center;
 }
 
+.auth-admin-sticky {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.auth-admin-sticky .auth-field-hint {
+  margin: 0;
+  text-align: center;
+}
+
 .auth-form-suggestions .auth-field-hint {
   margin-top: 0.5rem;
   margin-bottom: 0;

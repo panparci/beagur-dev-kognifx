@@ -7,6 +7,7 @@ import {
   DEV_DEMO_PASSWORD,
   LOGIN_FORM_SUGGESTIONS,
   REGISTER_FORM_EXAMPLE,
+  SUPER_ADMIN_LOGIN,
 } from '@modules/auth/devPersonas';
 import { PAGE_META } from '@core/constants/siteMeta';
 import { usePageMeta } from '@core/hooks/usePageMeta';
@@ -58,8 +59,8 @@ const AuthPage: React.FC<AuthPageProps> = ({
   const reduce = useReducedMotion();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(IS_DEV ? SUPER_ADMIN_LOGIN.email : '');
+  const [password, setPassword] = useState(IS_DEV ? DEV_DEMO_PASSWORD : '');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [devInstantOpen, setDevInstantOpen] = useState(false);
@@ -127,6 +128,10 @@ const AuthPage: React.FC<AuthPageProps> = ({
     setMode(next);
     setLocalError(null);
     onClearLoginError?.();
+    if (IS_DEV && next === 'login') {
+      setEmail(SUPER_ADMIN_LOGIN.email);
+      setPassword(DEV_DEMO_PASSWORD);
+    }
   };
 
   const applyLoginSuggestion = (suggestedEmail: string) => {
@@ -389,6 +394,25 @@ const AuthPage: React.FC<AuthPageProps> = ({
                     </button>
                   </div>
                 </>
+              ) : null}
+
+              {IS_DEV && mode === 'login' ? (
+                <div className="auth-admin-sticky">
+                  <button
+                    type="button"
+                    className="auth-form-suggestion-chip auth-form-suggestion-chip--solo"
+                    disabled={loginLoading}
+                    onClick={() => {
+                      applyLoginSuggestion(SUPER_ADMIN_LOGIN.email);
+                      onLoginWithEmail(SUPER_ADMIN_LOGIN.email, DEV_DEMO_PASSWORD);
+                    }}
+                  >
+                    Masuk sebagai {SUPER_ADMIN_LOGIN.label}
+                  </button>
+                  <p className="auth-field-hint">
+                    {SUPER_ADMIN_LOGIN.email} · password sudah terisi
+                  </p>
+                </div>
               ) : null}
 
               {IS_DEV ? (

@@ -68,12 +68,19 @@ export const DEMO_PERSONAS: DemoPersona[] = [
   },
 ];
 
+/** Akun super admin — prefill form login di development. */
+export const SUPER_ADMIN_LOGIN = {
+  id: 'admin',
+  label: 'Admin Yayasan',
+  email: 'beaguru07@gmail.com',
+} as const;
+
 /** Chip isi cepat di halaman login (dev). */
 export const LOGIN_FORM_SUGGESTIONS = [
+  SUPER_ADMIN_LOGIN,
   { id: 'guru', label: 'Guru Honorer', email: 'guru.a@bea-guru.dev' },
   { id: 'kepsek', label: 'Kepala Sekolah', email: 'kepsek.sdn1@bea-guru.dev' },
   { id: 'donor', label: 'Donatur', email: 'donor@bea-guru.dev' },
-  { id: 'admin', label: 'Admin Yayasan', email: 'beaguru07@gmail.com' },
 ] as const;
 
 export const REGISTER_FORM_EXAMPLE = {
