@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowUpRight, FileUp } from 'lucide-react';
 import Card from '@core/ui/Card';
 import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
+import StatCard from '@core/ui/StatCard';
 import { PortalSectionHead } from '@core/ui/portal/PortalPrimitives';
 import { showTab } from '@core/ui/tabPanel';
 import { usePortalNav } from '@core/routing/usePortalNav';
@@ -342,26 +343,34 @@ export function AdminReconciliationTab() {
 
       {selectedId ? (
         <Card className="p-4 mt-4 mb-6">
-          <h3 className="font-semibold text-bea-ink mb-1 text-base">3. Review baris</h3>
-          {period ? (
-            <div className="mb-3 space-y-1 text-sm font-bold text-bea-ink leading-relaxed">
-              <p>
-                Showing IDR transaction from {period.from} – {period.to}
-              </p>
-              <p>
-                Latest Balance per {period.balanceAsOf ?? period.to}
-                <span className="mx-1.5">·</span>
-                IDR {formatIdrPlain(period.amountTotal)}
-              </p>
-              <p>
-                {period.count.toLocaleString('id-ID')} transaksi
-                <span className="mx-1.5">·</span>
-                {period.matched}/{period.count} cocok
-              </p>
+          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-bea-ink text-base">3. Review baris</h3>
+              {period ? (
+                <p className="mt-2 text-sm font-bold text-bea-ink leading-relaxed">
+                  Showing IDR transaction from {period.from} – {period.to}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-bea-sage-muted">Belum ada mutasi di upload ini.</p>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-bea-sage-muted mb-3">Belum ada mutasi di upload ini.</p>
-          )}
+            {period ? (
+              <div className="grid w-full shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:min-w-[20rem] lg:flex-1 lg:max-w-xl">
+                <StatCard
+                  tone="copper"
+                  className="h-full min-h-[5.5rem]"
+                  label={`Latest Balance per ${period.balanceAsOf ?? period.to}`}
+                  value={`IDR ${formatIdrPlain(period.amountTotal)}`}
+                />
+                <StatCard
+                  tone="amber"
+                  className="h-full min-h-[5.5rem]"
+                  label="Transaksi & kecocokan"
+                  value={`${period.count.toLocaleString('id-ID')} · ${period.matched}/${period.count} cocok`}
+                />
+              </div>
+            ) : null}
+          </div>
           {lines.length === 0 ? (
             <p className="text-sm text-bea-sage-muted">Tidak ada transaksi yang menunggu tinjauan.</p>
           ) : (
