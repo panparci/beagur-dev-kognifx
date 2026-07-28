@@ -344,36 +344,18 @@ export function AdminReconciliationTab() {
         <Card className="p-4 mt-4 mb-6">
           <h3 className="font-semibold text-bea-ink mb-1 text-base">3. Review baris</h3>
           {period ? (
-            <div className="text-sm text-bea-sage-muted mb-3 leading-relaxed space-y-0.5">
+            <div className="mb-3 space-y-1 text-sm font-bold text-bea-ink leading-relaxed">
               <p>
                 Showing IDR transaction from {period.from} – {period.to}
               </p>
-              <p className="text-bea-ink font-medium">
-                Total Amount
-                {period.balanceAsOf ? ` per ${period.balanceAsOf}` : ''}
-                <span className="mx-1.5 text-bea-line font-normal">·</span>
+              <p>
+                Latest Balance per {period.balanceAsOf ?? period.to}
+                <span className="mx-1.5">·</span>
                 IDR {formatIdrPlain(period.amountTotal)}
               </p>
-              {period.pdfLatestBalance != null ? (
-                <p
-                  className={
-                    period.pdfLatestBalance !== period.amountTotal
-                      ? 'text-amber-800'
-                      : undefined
-                  }
-                >
-                  Latest Balance PDF
-                  {period.balanceAsOf ? ` per ${period.balanceAsOf}` : ''}
-                  <span className="mx-1.5 text-bea-line">·</span>
-                  IDR {formatIdrPlain(period.pdfLatestBalance)}
-                  {period.pdfLatestBalance !== period.amountTotal ? (
-                    <span className="ml-1.5 text-xs">(beda dari Total Amount — cek baris/parse)</span>
-                  ) : null}
-                </p>
-              ) : null}
               <p>
                 {period.count.toLocaleString('id-ID')} transaksi
-                <span className="mx-1.5 text-bea-line">·</span>
+                <span className="mx-1.5">·</span>
                 {period.matched}/{period.count} cocok
               </p>
             </div>
