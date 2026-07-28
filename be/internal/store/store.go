@@ -857,6 +857,17 @@ func (s *Store) CampaignProgress(ctx context.Context) (CampaignProgress, error) 
 		return CampaignProgress{}, err
 	}
 
+	inAmt, inDonors, _, _, _, err := s.LatestBankUploadTotals(ctx)
+	if err != nil {
+		return CampaignProgress{}, err
+	}
+	if p.Raised == 0 && inAmt > 0 {
+		p.Raised = inAmt
+	}
+	if p.DonorCount == 0 && inDonors > 0 {
+		p.DonorCount = inDonors
+	}
+
 	err = s.pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM donations WHERE verification_status = 'PENDING'`).Scan(&p.PendingDonationsCount)
 	if err != nil {

@@ -53,6 +53,20 @@ func (h ReconciliationHandler) CreateUpload(c *gin.Context) {
 	response.OK(c, data)
 }
 
+func (h ReconciliationHandler) DeleteUpload(c *gin.Context) {
+	current, ok := middleware.CurrentUser(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHENTICATED", "login required")
+		return
+	}
+	id := c.Param("id")
+	if err := h.Store.DeleteBankUpload(c.Request.Context(), id); writeStoreError(c, err) {
+		return
+	}
+	logAdminAction(c.Request.Context(), h.Store, current.ID, "reconciliation.delete_upload", "bank_statement_upload", id, nil)
+	response.OK(c, gin.H{"deleted": true, "id": id})
+}
+
 func (h ReconciliationHandler) ConfirmLine(c *gin.Context) {
 	current, ok := middleware.CurrentUser(c)
 	if !ok {

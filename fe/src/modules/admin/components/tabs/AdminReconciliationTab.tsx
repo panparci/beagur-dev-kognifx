@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, FileUp } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, FileUp, Trash2 } from 'lucide-react';
 import Card from '@core/ui/Card';
 import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
@@ -78,6 +78,28 @@ export function AdminReconciliationTab() {
       .then(setLines)
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Gagal memuat baris'));
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!active || uploads.length === 0) return;
+    if (!selectedId || !uploads.some((u) => u.id === selectedId)) {
+      setSelectedId(uploads[0]!.id);
+    }
+  }, [active, uploads, selectedId]);
+
+  const handleDeleteUpload = async (id: string) => {
+    if (!window.confirm('Hapus riwayat upload ini? Semua baris transaksi di upload ini ikut terhapus.')) return;
+    setLoading(true);
+    try {
+      await reconciliationService.deleteUpload(id);
+      if (selectedId === id) setSelectedId(null);
+      toast.success('Riwayat upload dihapus');
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus upload');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submitLines = async (
     name: string,
@@ -318,21 +340,30 @@ export function AdminReconciliationTab() {
           ) : (
             <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto">
               {uploads.map((u) => (
-                <li key={u.id}>
+                <li key={u.id} className="flex items-stretch gap-2">
                   <button
                     type="button"
-                    className={`w-full text-left rounded-lg border px-3 py-2 ${
+                    className={`min-w-0 flex-1 text-left rounded-lg border px-3 py-2 ${
                       selectedId === u.id ? 'border-bea-copper bg-bea-ivory-light' : 'border-bea-line'
                     }`}
                     onClick={() => setSelectedId(u.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm">{u.fileName}</span>
+                      <span className="font-medium text-sm truncate">{u.fileName}</span>
                       <Badge variant={statusVariant(u.status)}>{u.status}</Badge>
                     </div>
                     <p className="text-xs text-bea-sage-muted mt-1">
                       {u.direction === 'INCOMING' ? 'Masuk' : 'Keluar'} · {u.matchedCount}/{u.totalLines} cocok
                     </p>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Hapus ${u.fileName}`}
+                    disabled={loading}
+                    onClick={() => void handleDeleteUpload(u.id)}
+                    className="shrink-0 self-center rounded-lg border border-bea-line px-2.5 py-2 text-bea-sage-muted hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                  >
+                    <Trash2 size={16} aria-hidden />
                   </button>
                 </li>
               ))}

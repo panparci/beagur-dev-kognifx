@@ -111,6 +111,44 @@ func (s *Store) ListBankUploads(ctx context.Context) ([]BankStatementUpload, err
 	return out, rows.Err()
 }
 
+func (s *Store) DeleteBankUpload(ctx context.Context, uploadID string) error {
+	if err := s.requireDB(); err != nil {
+		return err
+	}
+	tag, err := s.pool.Exec(ctx, `DELETE FROM bank_statement_uploads WHERE id = $1::uuid`, uploadID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// LatestBankUploadTotals aggregates the newest INCOMING/OUTGOING upload each (for charts/KPI fallback).
+func (s *Store) LatestBankUploadTotals(ctx context.Context) (incomingAmt, incomingDonors, incomingCnt, outgoingAmt, outgoingCnt int64, err error) {
+	if err := s.requireDB(); err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+	err = s.pool.QueryRow(ctx, `
+		WITH latest_in AS (
+			SELECT id FROM bank_statement_uploads
+			WHERE direction = 'INCOMING' ORDER BY created_at DESC LIMIT 1
+		),
+		latest_out AS (
+			SELECT id FROM bank_statement_uploads
+			WHERE direction = 'OUTGOING' ORDER BY created_at DESC LIMIT 1
+		)
+		SELECT
+			COALESCE((SELECT SUM(amount) FROM bank_transaction_lines WHERE upload_id = (SELECT id FROM latest_in)), 0),
+			COALESCE((SELECT COUNT(DISTINCT NULLIF(counterparty_account, '')) FROM bank_transaction_lines WHERE upload_id = (SELECT id FROM latest_in)), 0),
+			COALESCE((SELECT COUNT(*) FROM bank_transaction_lines WHERE upload_id = (SELECT id FROM latest_in)), 0),
+			COALESCE((SELECT SUM(amount) FROM bank_transaction_lines WHERE upload_id = (SELECT id FROM latest_out)), 0),
+			COALESCE((SELECT COUNT(*) FROM bank_transaction_lines WHERE upload_id = (SELECT id FROM latest_out)), 0)`).
+		Scan(&incomingAmt, &incomingDonors, &incomingCnt, &outgoingAmt, &outgoingCnt)
+	return incomingAmt, incomingDonors, incomingCnt, outgoingAmt, outgoingCnt, err
+}
+
 func (s *Store) ListBankLines(ctx context.Context, uploadID string) ([]BankTransactionLine, error) {
 	if err := s.requireDB(); err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@core/api/client';
+import { apiDelete, apiGet, apiPost } from '@core/api/client';
 
 export type BankDirection = 'INCOMING' | 'OUTGOING';
 export type MatchStatus = 'UNMATCHED' | 'SUGGESTED' | 'MATCHED' | 'IGNORED';
@@ -56,6 +56,8 @@ export const reconciliationService = {
     balanceAsOf?: string | null;
     latestBalance?: number | null;
   }) => apiPost<BankStatementUpload>('/api/v1/admin/reconciliation/uploads', body),
+  deleteUpload: (uploadId: string) =>
+    apiDelete<{ deleted: boolean; id: string }>(`/api/v1/admin/reconciliation/uploads/${uploadId}`),
   confirmLine: (lineId: string, body?: { donationId?: string; ledgerId?: string }) =>
     apiPost<BankTransactionLine>(`/api/v1/admin/reconciliation/lines/${lineId}/confirm`, body ?? {}),
   ignoreLine: (lineId: string) =>

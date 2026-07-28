@@ -87,6 +87,14 @@ func (s *Store) MonthlyProgramAnalytics(ctx context.Context, monthCount int) (Pr
 		WITH month_series AS (
 			SELECT generate_series($1::date, $2::date, '1 month'::interval)::date AS month_start
 		),
+		latest_in AS (
+			SELECT id FROM bank_statement_uploads
+			WHERE direction = 'INCOMING' ORDER BY created_at DESC LIMIT 1
+		),
+		latest_out AS (
+			SELECT id FROM bank_statement_uploads
+			WHERE direction = 'OUTGOING' ORDER BY created_at DESC LIMIT 1
+		),
 		donations_by_month AS (
 			SELECT date_trunc('month', created_at AT TIME ZONE 'UTC')::date AS m,
 			       COALESCE(SUM(amount), 0)::bigint AS amt,
@@ -106,12 +114,32 @@ func (s *Store) MonthlyProgramAnalytics(ctx context.Context, monthCount int) (Pr
 			  AND occurred_at >= $1
 			  AND occurred_at < $3
 			GROUP BY 1
+		),
+		bank_in_by_month AS (
+			SELECT date_trunc('month', transaction_date)::date AS m,
+			       COALESCE(SUM(amount), 0)::bigint AS amt,
+			       COUNT(*)::bigint AS cnt,
+			       COUNT(DISTINCT NULLIF(counterparty_account, ''))::bigint AS donors
+			FROM bank_transaction_lines
+			WHERE upload_id = (SELECT id FROM latest_in)
+			  AND transaction_date >= $1::date
+			  AND transaction_date < $3::date
+			GROUP BY 1
+		),
+		bank_out_by_month AS (
+			SELECT date_trunc('month', transaction_date)::date AS m,
+			       COALESCE(SUM(amount), 0)::bigint AS amt
+			FROM bank_transaction_lines
+			WHERE upload_id = (SELECT id FROM latest_out)
+			  AND transaction_date >= $1::date
+			  AND transaction_date < $3::date
+			GROUP BY 1
 		)
 		SELECT ms.month_start,
-		       COALESCE(d.amt, 0),
-		       COALESCE(d.cnt, 0),
-		       COALESCE(d.donors, 0),
-		       COALESCE(t.amt, 0),
+		       COALESCE(NULLIF(d.amt, 0), bi.amt, 0),
+		       COALESCE(NULLIF(d.cnt, 0), bi.cnt, 0),
+		       COALESCE(NULLIF(d.donors, 0), bi.donors, 0),
+		       COALESCE(NULLIF(t.amt, 0), bo.amt, 0),
 		       (
 		         SELECT COUNT(*)::bigint FROM teacher_profiles tp
 		         WHERE tp.status = 'APPROVED'
@@ -120,6 +148,8 @@ func (s *Store) MonthlyProgramAnalytics(ctx context.Context, monthCount int) (Pr
 		FROM month_series ms
 		LEFT JOIN donations_by_month d ON d.m = ms.month_start
 		LEFT JOIN transfers_by_month t ON t.m = ms.month_start
+		LEFT JOIN bank_in_by_month bi ON bi.m = ms.month_start
+		LEFT JOIN bank_out_by_month bo ON bo.m = ms.month_start
 		ORDER BY ms.month_start`,
 		periodFrom, periodTo, periodEnd)
 	if err != nil {
@@ -211,6 +241,13 @@ func (s *Store) MonthlyProgramAnalytics(ctx context.Context, monthCount int) (Pr
 		WHERE verification_status = 'VERIFIED'
 		  AND created_at >= $1 AND created_at < $2`,
 		periodFrom, periodEnd).Scan(&summary.TotalDonors)
+	if summary.TotalDonors == 0 {
+		_, bankDonors, _, _, _, err := s.LatestBankUploadTotals(ctx)
+		if err != nil {
+			return ProgramAnalytics{}, err
+		}
+		summary.TotalDonors = bankDonors
+	}
 
 	return ProgramAnalytics{
 		PeriodFrom: periodFrom.Format("2006-01-02"),

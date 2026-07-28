@@ -171,6 +171,7 @@ func New(deps Dependencies) *gin.Engine {
 		auth.GET("/admin/reconciliation/uploads", perm("reconciliation:read"), reconciliationHandler.ListUploads)
 		auth.GET("/admin/reconciliation/uploads/:id/lines", perm("reconciliation:read"), reconciliationHandler.ListLines)
 		auth.POST("/admin/reconciliation/uploads", perm("reconciliation:write"), reconciliationHandler.CreateUpload)
+		auth.DELETE("/admin/reconciliation/uploads/:id", perm("reconciliation:write"), reconciliationHandler.DeleteUpload)
 		auth.POST("/admin/reconciliation/lines/:id/confirm", perm("reconciliation:write"), reconciliationHandler.ConfirmLine)
 		auth.POST("/admin/reconciliation/lines/:id/ignore", perm("reconciliation:write"), reconciliationHandler.IgnoreLine)
 		auth.POST("/admin/reconciliation/lines/:id/create-donor", perm("reconciliation:write"), reconciliationHandler.CreateDonorFromLine)
