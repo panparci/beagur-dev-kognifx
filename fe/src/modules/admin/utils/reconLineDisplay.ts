@@ -46,19 +46,23 @@ export function jagoLineDisplay(line: BankTransactionLine) {
   };
 }
 
-/** Prefer PDF header meta on upload; fall back to min/max of reviewed lines. */
+/** Period from PDF header when available; IDR figure = sum of Amount column (not PDF saldo). */
 export function jagoReviewSummary(lines: BankTransactionLine[], upload?: BankStatementUpload | null) {
   if (lines.length === 0 && !upload?.periodStart) return null;
   const dates = lines.map((l) => l.transactionDate).sort();
   const matched = lines.filter((l) => l.matchStatus === 'MATCHED').length;
+  const amountTotal = lines.reduce((s, l) => s + l.amount, 0);
   const fromIso = upload?.periodStart || dates[0] || '';
   const toIso = upload?.periodEnd || dates[dates.length - 1] || '';
+  const asOfIso = upload?.balanceAsOf || dates[dates.length - 1] || toIso;
   return {
     from: fromIso ? formatJagoDate(fromIso) : '—',
     to: toIso ? formatJagoDate(toIso) : '—',
     count: lines.length,
     matched,
-    balanceAsOf: upload?.balanceAsOf ? formatJagoDate(upload.balanceAsOf) : null,
-    latestBalance: upload?.latestBalance ?? null,
+    amountTotal,
+    balanceAsOf: asOfIso ? formatJagoDate(asOfIso) : null,
+    /** PDF header saldo — hanya pembanding, bukan angka utama. */
+    pdfLatestBalance: upload?.latestBalance ?? null,
   };
 }

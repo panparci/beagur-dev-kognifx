@@ -348,11 +348,27 @@ export function AdminReconciliationTab() {
               <p>
                 Showing IDR transaction from {period.from} – {period.to}
               </p>
-              {period.latestBalance != null && period.balanceAsOf ? (
-                <p>
-                  Latest Balance per {period.balanceAsOf}
+              <p className="text-bea-ink font-medium">
+                Total Amount
+                {period.balanceAsOf ? ` per ${period.balanceAsOf}` : ''}
+                <span className="mx-1.5 text-bea-line font-normal">·</span>
+                IDR {formatIdrPlain(period.amountTotal)}
+              </p>
+              {period.pdfLatestBalance != null ? (
+                <p
+                  className={
+                    period.pdfLatestBalance !== period.amountTotal
+                      ? 'text-amber-800'
+                      : undefined
+                  }
+                >
+                  Latest Balance PDF
+                  {period.balanceAsOf ? ` per ${period.balanceAsOf}` : ''}
                   <span className="mx-1.5 text-bea-line">·</span>
-                  IDR {formatIdrPlain(period.latestBalance)}
+                  IDR {formatIdrPlain(period.pdfLatestBalance)}
+                  {period.pdfLatestBalance !== period.amountTotal ? (
+                    <span className="ml-1.5 text-xs">(beda dari Total Amount — cek baris/parse)</span>
+                  ) : null}
                 </p>
               ) : null}
               <p>
