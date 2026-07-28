@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, FileUp } from 'lucide-react';
 import Card from '@core/ui/Card';
 import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
@@ -174,14 +174,58 @@ export function AdminReconciliationTab() {
             </p>
           </div>
 
-          <label className="block">
-            <span className={beaFieldLabel}>Jenis mutasi</span>
-            <select className={beaSelect} value={direction} onChange={(e) => setDirection(e.target.value as BankDirection)}>
-              <option value="INCOMING">Masuk — donatur ke yayasan</option>
-              <option value="OUTGOING">Keluar — yayasan ke guru</option>
-            </select>
-            <span className="mt-1 block text-xs text-bea-sage-muted">Biasanya terisi otomatis dari nama file.</span>
-          </label>
+          <fieldset className="space-y-2">
+            <legend className={beaFieldLabel}>Pilih jenis mutasi</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setDirection('INCOMING')}
+                className={`flex flex-col items-start gap-2 rounded-2xl border-2 px-4 py-4 text-left transition-colors ${
+                  direction === 'INCOMING'
+                    ? 'border-emerald-600 bg-emerald-50'
+                    : 'border-bea-line bg-white hover:border-emerald-400'
+                }`}
+              >
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-full ${
+                    direction === 'INCOMING' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  <ArrowDownLeft size={22} aria-hidden />
+                </span>
+                <span className="text-base font-semibold text-bea-ink">Uang masuk</span>
+                <span className="text-sm text-bea-sage-muted leading-snug">
+                  Donasi dari donatur ke yayasan. Pakai PDF <strong className="font-medium text-bea-ink">Donasi</strong>.
+                </span>
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setDirection('OUTGOING')}
+                className={`flex flex-col items-start gap-2 rounded-2xl border-2 px-4 py-4 text-left transition-colors ${
+                  direction === 'OUTGOING'
+                    ? 'border-rose-600 bg-rose-50'
+                    : 'border-bea-line bg-white hover:border-rose-400'
+                }`}
+              >
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-full ${
+                    direction === 'OUTGOING' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700'
+                  }`}
+                >
+                  <ArrowUpRight size={22} aria-hidden />
+                </span>
+                <span className="text-base font-semibold text-bea-ink">Uang keluar</span>
+                <span className="text-sm text-bea-sage-muted leading-snug">
+                  Penyaluran ke guru. Pakai PDF <strong className="font-medium text-bea-ink">Transfer</strong>.
+                </span>
+              </button>
+            </div>
+            <p className="text-xs text-bea-sage-muted">
+              Kalau nama file mengandung “Donasi” atau “Transfer”, pilihan ini biasanya ikut otomatis.
+            </p>
+          </fieldset>
 
           <input
             ref={fileInputRef}
