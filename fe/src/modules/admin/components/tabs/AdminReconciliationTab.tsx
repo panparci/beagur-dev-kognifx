@@ -165,8 +165,8 @@ export function AdminReconciliationTab() {
         description="Cocokkan mutasi bank dengan donasi masuk atau penyaluran ke guru."
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4 space-y-4">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <Card className="flex h-full flex-col p-4 space-y-4">
           <div>
             <h3 className="font-semibold text-bea-ink text-base">1. Unggah PDF rekening koran Bank Jago</h3>
             <p className="text-sm text-bea-sage-muted mt-1 leading-relaxed">
@@ -309,13 +309,13 @@ export function AdminReconciliationTab() {
           ) : null}
         </Card>
 
-        <Card className="p-4 space-y-3">
+        <Card className="flex h-full min-h-0 flex-col p-4">
           <h3 className="font-semibold text-bea-ink text-base">2. Riwayat upload</h3>
-          <p className="text-sm text-bea-sage-muted">Klik salah satu untuk melihat & meninjau baris di bawah.</p>
+          <p className="mt-1 text-sm text-bea-sage-muted">Klik salah satu untuk melihat & meninjau baris di bawah.</p>
           {uploads.length === 0 ? (
-            <p className="text-sm text-bea-sage-muted">Belum ada upload.</p>
+            <p className="mt-3 text-sm text-bea-sage-muted">Belum ada upload.</p>
           ) : (
-            <ul className="space-y-2 max-h-80 overflow-auto">
+            <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto">
               {uploads.map((u) => (
                 <li key={u.id}>
                   <button
