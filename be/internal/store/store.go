@@ -587,14 +587,14 @@ func (s *Store) SuspendTeacher(ctx context.Context, profileID, actorUserID, reas
 	if err == nil {
 		defer rows.Close()
 		body := fmt.Sprintf(
-			"%s saat ini nonaktif sementara dari program (%s). Pertimbangkan memilih guru asuh baru di Penyaluran Aktif.",
+			"%s saat ini nonaktif sementara dari program (%s). Pertimbangkan memilih guru asuh baru di menu Guru Penerima Bantuan.",
 			profile.FullName, reason,
 		)
 		for rows.Next() {
 			var donorID string
 			if rows.Scan(&donorID) == nil && donorID != "" {
 				_ = s.CreateUserNotification(ctx, donorID, "TEACHER_SUSPENDED",
-					"Guru Asuh Anda Nonaktif Sementara", body, "Penyaluran Aktif")
+					"Guru Asuh Anda Nonaktif Sementara", body, "Guru Penerima Bantuan")
 			}
 		}
 	}
@@ -655,7 +655,7 @@ func (s *Store) ReactivateTeacher(ctx context.Context, profileID, actorUserID st
 			var donorID string
 			if rows.Scan(&donorID) == nil && donorID != "" {
 				_ = s.CreateUserNotification(ctx, donorID, "TEACHER_REACTIVATED",
-					"Guru Asuh Anda Aktif Kembali", body, "Penyaluran Aktif")
+					"Guru Asuh Anda Aktif Kembali", body, "Guru Penerima Bantuan")
 			}
 		}
 	}
@@ -958,10 +958,13 @@ func (s *Store) UpdateReportStatus(ctx context.Context, id, status string) (Mont
 	if err != nil {
 		return MonthlyReport{}, err
 	}
+	if status != "APPROVED" && status != "REJECTED" {
+		return MonthlyReport{}, fmt.Errorf("%w: status must be APPROVED or REJECTED", ErrInvalidState)
+	}
 	var r MonthlyReport
 	err = s.pool.QueryRow(ctx, `
 		UPDATE monthly_reports SET status = $2::report_status
-		WHERE id = $1
+		WHERE id = $1 AND status = 'PENDING'
 		RETURNING id::text, teacher_user_id::text, photo_url, description,
 		          status::text, submitted_at, created_at, updated_at`,
 		rid, status,

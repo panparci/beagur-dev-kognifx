@@ -46,7 +46,7 @@ export function jagoLineDisplay(line: BankTransactionLine) {
   };
 }
 
-/** Period from PDF header when available; IDR = sum of Amount (bukan saldo header PDF). */
+/** Period + saldo dari header PDF; amountTotal = jumlah kolom Amount (cek parse). */
 export function jagoReviewSummary(lines: BankTransactionLine[], upload?: BankStatementUpload | null) {
   if (lines.length === 0 && !upload?.periodStart) return null;
   const dates = lines.map((l) => l.transactionDate).sort();
@@ -61,6 +61,7 @@ export function jagoReviewSummary(lines: BankTransactionLine[], upload?: BankSta
     count: lines.length,
     matched,
     amountTotal,
+    latestBalance: upload?.latestBalance ?? null,
     balanceAsOf: asOfIso ? formatJagoDate(asOfIso) : null,
   };
 }

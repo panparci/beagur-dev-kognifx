@@ -34,6 +34,7 @@ export const PORTAL_TAB_SHORT: Record<string, string> = {
   'Donatur & Donasi': 'Donatur & Donasi',
   [ADMIN_ANALYTICS_TAB]: 'Grafik Program',
   [ADMIN_LANDING_CMS_TAB]: 'Halaman Depan',
+  'Laporan Absen Guru': 'Absen Laporan',
   'Validasi Laporan & Kebijakan': 'Syarat & Ketentuan',
   'Pengajuan Profil': 'Profil Guru',
   'Laporan Kelas Bulanan': 'Laporan Bulanan',

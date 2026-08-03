@@ -5,6 +5,7 @@ import Button from '@core/ui/Button';
 import Badge from '@core/ui/Badge';
 import StatCard from '@core/ui/StatCard';
 import { PortalSectionHead } from '@core/ui/portal/PortalPrimitives';
+import { PortalModal } from '@core/ui/PortalModal';
 import { showTab } from '@core/ui/tabPanel';
 import { usePortalNav } from '@core/routing/usePortalNav';
 import { useToast } from '@core/ui/toast/ToastProvider';
@@ -57,6 +58,7 @@ export function AdminReconciliationTab() {
   const [donorLineId, setDonorLineId] = useState<string | null>(null);
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<BankStatementUpload | null>(null);
 
   const reload = async () => {
     const list = await reconciliationService.listUploads();
@@ -86,11 +88,13 @@ export function AdminReconciliationTab() {
     }
   }, [active, uploads, selectedId]);
 
-  const handleDeleteUpload = async (id: string) => {
-    if (!window.confirm('Hapus riwayat upload ini? Semua baris transaksi di upload ini ikut terhapus.')) return;
+  const confirmDeleteUpload = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
     setLoading(true);
     try {
       await reconciliationService.deleteUpload(id);
+      setDeleteTarget(null);
       if (selectedId === id) setSelectedId(null);
       toast.success('Riwayat upload dihapus');
       await reload();
@@ -360,7 +364,7 @@ export function AdminReconciliationTab() {
                     type="button"
                     aria-label={`Hapus ${u.fileName}`}
                     disabled={loading}
-                    onClick={() => void handleDeleteUpload(u.id)}
+                    onClick={() => setDeleteTarget(u)}
                     className="shrink-0 self-center rounded-lg border border-bea-line px-2.5 py-2 text-bea-sage-muted hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
                   >
                     <Trash2 size={16} aria-hidden />
@@ -386,11 +390,25 @@ export function AdminReconciliationTab() {
               )}
             </div>
             {period ? (
-              <div className="grid w-full shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:min-w-[20rem] lg:flex-1 lg:max-w-xl">
+              <div className="grid w-full shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 lg:min-w-[20rem] lg:flex-1 lg:max-w-3xl">
                 <StatCard
                   tone="copper"
                   className="h-full min-h-[5.5rem]"
-                  label={`Latest Balance per ${period.balanceAsOf ?? period.to}`}
+                  label={
+                    period.latestBalance != null
+                      ? `Latest Balance per ${period.balanceAsOf ?? period.to}`
+                      : 'Latest Balance (header PDF)'
+                  }
+                  value={
+                    period.latestBalance != null
+                      ? `IDR ${formatIdrPlain(period.latestBalance)}`
+                      : '—'
+                  }
+                />
+                <StatCard
+                  tone="default"
+                  className="h-full min-h-[5.5rem]"
+                  label="Total mutasi (jumlah Amount)"
                   value={`IDR ${formatIdrPlain(period.amountTotal)}`}
                 />
                 <StatCard
@@ -571,6 +589,37 @@ export function AdminReconciliationTab() {
             </Button>
           </div>
         </Card>
+      ) : null}
+
+      {deleteTarget ? (
+        <PortalModal
+          id="recon-delete-upload"
+          title="Hapus riwayat upload?"
+          onClose={() => {
+            if (!loading) setDeleteTarget(null);
+          }}
+          footer={
+            <>
+              <Button variant="secondary" disabled={loading} onClick={() => setDeleteTarget(null)}>
+                Batal
+              </Button>
+              <Button variant="danger" disabled={loading} onClick={() => void confirmDeleteUpload()}>
+                {loading ? 'Menghapus…' : 'Ya, hapus'}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-bea-ink leading-relaxed">
+            Hapus riwayat upload ini? Semua baris transaksi di upload ini ikut terhapus.
+          </p>
+          <p className="mt-3 rounded-lg border border-bea-line bg-bea-ivory-light px-3 py-2 text-sm font-medium text-bea-ink break-all">
+            {deleteTarget.fileName}
+          </p>
+          <p className="mt-2 text-xs text-bea-sage-muted">
+            {deleteTarget.direction === 'INCOMING' ? 'Masuk' : 'Keluar'} · {deleteTarget.totalLines} baris ·{' '}
+            {deleteTarget.matchedCount} cocok
+          </p>
+        </PortalModal>
       ) : null}
     </div>
   );

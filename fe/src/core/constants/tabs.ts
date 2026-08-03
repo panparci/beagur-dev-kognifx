@@ -7,5 +7,6 @@ export const ADMIN_LANDING_CMS_TAB = 'CMS Landing';
 export const ADMIN_RECONCILIATION_TAB = 'Rekonsiliasi Bank';
 export const ADMIN_TASKS_TAB = 'Kelola Tugas Guru';
 export const ADMIN_LMS_TAB = 'Kelola Pelatihan';
+export const ADMIN_MONTHLY_REPORT_OPS_TAB = 'Laporan Absen Guru';
 export const TEACHER_TRAINING_TAB = 'Pelatihan Pedagogi';
 export const TEACHER_TASKS_TAB = 'Tugas & Misi Yayasan';

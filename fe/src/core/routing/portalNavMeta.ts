@@ -44,6 +44,12 @@ export const PORTAL_NAV_META: Record<string, PortalNavMeta> = {
     group: 'operasional',
     mobile: 'Rekon',
   },
+  'Laporan Absen Guru': {
+    label: 'Absen Laporan',
+    hint: 'Cek lapor bulanan & suspend',
+    group: 'operasional',
+    mobile: 'Absen',
+  },
   'Kelola Tugas Guru': {
     label: 'Tugas Guru',
     hint: 'Reminder & misi guru',

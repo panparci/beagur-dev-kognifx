@@ -8,6 +8,7 @@ import {
   ADMIN_RECONCILIATION_TAB,
   ADMIN_TASKS_TAB,
   ADMIN_LMS_TAB,
+  ADMIN_MONTHLY_REPORT_OPS_TAB,
   TEACHER_TRAINING_TAB,
   TEACHER_TASKS_TAB,
 } from '../constants/tabs';
@@ -19,6 +20,7 @@ export const ALL_PORTAL_TABS = [
   'Buku Ledger Keuangan',
   'Donatur & Donasi',
   ADMIN_RECONCILIATION_TAB,
+  ADMIN_MONTHLY_REPORT_OPS_TAB,
   ADMIN_TASKS_TAB,
   ADMIN_LMS_TAB,
   ADMIN_ANALYTICS_TAB,
@@ -60,7 +62,10 @@ export const TAB_BY_SLUG: Record<string, string> = Object.fromEntries(
 export const OVERVIEW_TAB_SLUG = SLUG_BY_TAB[OVERVIEW_TAB];
 
 export function portalPathForTab(tab: string): string {
-  const slug = SLUG_BY_TAB[tab] ?? tabToSlug(tab);
+  // Alias legacy sandbox tab names stored in older notifications
+  const resolved =
+    tab === 'Penyaluran Aktif' ? BENEFICIARY_TEACHERS_TAB : tab;
+  const slug = SLUG_BY_TAB[resolved] ?? tabToSlug(resolved);
   return `${PORTAL_BASE_PATH}/${slug}`;
 }
 
@@ -73,6 +78,7 @@ export function tabsForRole(role: UserRole | undefined): string[] {
         'Buku Ledger Keuangan',
         'Donatur & Donasi',
         ADMIN_RECONCILIATION_TAB,
+        ADMIN_MONTHLY_REPORT_OPS_TAB,
         ADMIN_TASKS_TAB,
         ADMIN_LMS_TAB,
         ADMIN_ANALYTICS_TAB,

@@ -593,7 +593,11 @@ func (h ReportHandler) UpdateStatus(c *gin.Context) {
 	saved, err := h.Store.UpdateReportStatus(c.Request.Context(), c.Param("id"), body.Status)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			response.Error(c, http.StatusNotFound, "NOT_FOUND", "report not found")
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "Laporan tidak ditemukan atau sudah diputuskan")
+			return
+		}
+		if errors.Is(err, store.ErrInvalidState) {
+			response.Error(c, http.StatusBadRequest, "INVALID_STATUS", err.Error())
 			return
 		}
 		response.Error(c, http.StatusInternalServerError, "DB_ERROR", err.Error())

@@ -24,6 +24,7 @@ import { AdminAnalyticsTab } from './tabs/AdminAnalyticsTab';
 import { AdminLandingCmsTab } from './tabs/AdminLandingCmsTab';
 import { AdminTermsTab } from './tabs/AdminTermsTab';
 import { AdminReconciliationTab } from './tabs/AdminReconciliationTab';
+import { AdminMonthlyReportOpsTab } from './tabs/AdminMonthlyReportOpsTab';
 import { AdminTasksTab } from './tabs/AdminTasksTab';
 import { AdminLmsTab } from './tabs/AdminLmsTab';
 import { AdminReportsOverviewCard } from './AdminReportsOverviewCard';
@@ -571,6 +572,7 @@ function AdminDashboardContent() {
         <AdminTermsTab />
 
         <AdminReconciliationTab />
+        <AdminMonthlyReportOpsTab />
         <AdminTasksTab />
         <AdminLmsTab />
         <AdminAnalyticsTab />

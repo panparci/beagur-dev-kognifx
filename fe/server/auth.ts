@@ -64,6 +64,8 @@ export const auth = betterAuth({
   plugins: [
     jwt({
       jwt: {
+        // Default Better Auth JWT pendek; portal sering idle di LMS/tugas.
+        expirationTime: '7d',
         definePayload: ({ user }) => ({
           sub: user.id,
           email: user.email,

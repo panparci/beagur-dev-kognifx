@@ -1,6 +1,7 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../config';
-import { getAccessToken, notifyUnauthorized } from '@modules/auth/auth-token';
+import { getAccessToken, notifyUnauthorized, setAccessToken } from '@modules/auth/auth-token';
+import { refreshAccessToken } from '@modules/auth/refreshAccessToken';
 import { withNetworkRetry } from '@core/net/lowSignal';
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -8,6 +9,7 @@ const UPLOAD_TIMEOUT_MS = 90_000;
 
 type ApiEnvelope<T> = { data: T };
 type ApiErrorEnvelope = { error: { code: string; message: string } };
+type RetryConfig = InternalAxiosRequestConfig & { _authRetry?: boolean };
 
 export const apiAxios = axios.create({
   baseURL: API_BASE_URL,
@@ -25,10 +27,29 @@ apiAxios.interceptors.request.use((config) => {
 
 apiAxios.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401 && getAccessToken()) {
-      notifyUnauthorized();
+  async (error: AxiosError) => {
+    const original = error.config as RetryConfig | undefined;
+    if (error.response?.status !== 401 || !original) {
+      return Promise.reject(error);
     }
+
+    // JWT short-lived; session cookie often still valid — refresh once, retry.
+    if (!original._authRetry) {
+      original._authRetry = true;
+      try {
+        const token = await refreshAccessToken();
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${token}`;
+        return apiAxios.request(original);
+      } catch {
+        setAccessToken(null);
+        notifyUnauthorized();
+        return Promise.reject(error);
+      }
+    }
+
+    setAccessToken(null);
+    notifyUnauthorized();
     return Promise.reject(error);
   },
 );

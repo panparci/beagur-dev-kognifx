@@ -7,7 +7,7 @@ import { useRequireUser } from '@modules/auth/hooks/useRequireUser';
 import PortalLogo from './PortalLogo';
 import { NotificationBell } from './NotificationBell';
 import { UserRole } from '../types';
-import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB, ADMIN_RECONCILIATION_TAB, ADMIN_TASKS_TAB, ADMIN_LMS_TAB, TEACHER_TRAINING_TAB, TEACHER_TASKS_TAB } from '../constants/tabs';
+import { OVERVIEW_TAB, BENEFICIARY_TEACHERS_TAB, VALIDATOR_HISTORY_TAB, ADMIN_ANALYTICS_TAB, ADMIN_LANDING_CMS_TAB, ADMIN_RECONCILIATION_TAB, ADMIN_MONTHLY_REPORT_OPS_TAB, ADMIN_TASKS_TAB, ADMIN_LMS_TAB, TEACHER_TRAINING_TAB, TEACHER_TASKS_TAB } from '../constants/tabs';
 import { portalPathForTab } from '../routing/tabRoutes';
 import { portalDocumentTitle, SITE_ORG } from '../constants/siteMeta';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -30,6 +30,7 @@ import {
   Users,
   ClipboardList,
   Scale,
+  CalendarCheck,
 } from 'lucide-react';
 import {
   ADMIN_NAV_GROUP_ORDER,
@@ -141,6 +142,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
           { name: 'Buku Ledger Keuangan', icon: Banknote, to: portalPathForTab('Buku Ledger Keuangan') },
           { name: 'Donatur & Donasi', icon: HandCoins, to: portalPathForTab('Donatur & Donasi') },
           { name: ADMIN_RECONCILIATION_TAB, icon: Scale, to: portalPathForTab(ADMIN_RECONCILIATION_TAB) },
+          { name: ADMIN_MONTHLY_REPORT_OPS_TAB, icon: CalendarCheck, to: portalPathForTab(ADMIN_MONTHLY_REPORT_OPS_TAB) },
           { name: ADMIN_TASKS_TAB, icon: ClipboardList, to: portalPathForTab(ADMIN_TASKS_TAB) },
           { name: ADMIN_LMS_TAB, icon: GraduationCap, to: portalPathForTab(ADMIN_LMS_TAB) },
           { name: ADMIN_ANALYTICS_TAB, icon: BarChart3, to: portalPathForTab(ADMIN_ANALYTICS_TAB) },
@@ -284,7 +286,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
                 <div className="portal-profile-avatar">
                   {user?.name ? user.name.slice(0, 2).toUpperCase() : 'U'}
                 </div>
-                <span className="portal-profile-name hidden sm:inline">{user?.name}</span>
+                <span className="portal-profile-name hidden lg:inline">{user?.name}</span>
               </button>
 
               {isProfileOpen && (
@@ -328,7 +330,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title, onSearch }) => {
                 <Link
                   key={link.name}
                   to={link.to}
-                  className={`portal-mobile-nav-btn flex min-w-[4.25rem] flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 transition-all ${
+                  className={`portal-mobile-nav-btn flex flex-col items-center justify-center rounded-xl px-1 py-2 transition-all ${
                     isActive ? 'portal-mobile-nav-btn--active' : ''
                   }`}
                 >

@@ -31,6 +31,7 @@
 .app-shell {
   background: var(--portal-canvas);
   font-family: var(--portal-font);
+  overflow-x: clip;
 }
 
 .app-shell .font-sans,
@@ -288,9 +289,10 @@
   max-width: none;
   margin-inline: auto;
   padding: 0.375rem 0.75rem;
+  /* title + actions stay one row; search wraps below on narrow viewports */
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .portal-header {
     flex-wrap: nowrap;
     padding: 0.4375rem 0.875rem;
@@ -309,7 +311,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex: 1 1 10rem;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -320,7 +322,7 @@
 .portal-header-title {
   margin: 0;
   font-family: var(--portal-font);
-  font-size: clamp(0.9375rem, 1.8vw, 1.125rem);
+  font-size: clamp(0.875rem, 1.8vw, 1.125rem);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -341,11 +343,26 @@
   white-space: nowrap;
 }
 
+@media (max-width: 639px) {
+  .portal-header-subtitle {
+    display: none;
+  }
+}
+
 .portal-header-search {
   position: relative;
-  flex: 1 1 12rem;
-  max-width: 18rem;
-  min-width: 9rem;
+  flex: 1 1 100%;
+  order: 3;
+  max-width: none;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .portal-header-search {
+    flex: 1 1 12rem;
+    order: 0;
+    max-width: 18rem;
+  }
 }
 
 .portal-header-search-icon {
@@ -359,12 +376,12 @@
 
 .portal-header-search-input {
   width: 100%;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0.3125rem 0.625rem 0.3125rem 1.875rem;
-  border-radius: var(--portal-radius);
+  border-radius: 999px;
   border: 1px solid var(--portal-line);
   background: var(--portal-ivory);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--portal-ink);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -378,12 +395,19 @@
 .portal-header-actions {
   position: relative;
   z-index: 60;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .portal-profile-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  max-width: 100%;
   padding: 0.25rem 0.625rem 0.25rem 0.25rem;
   border-radius: 999px;
   border: 1px solid var(--portal-line);
@@ -424,7 +448,7 @@
   right: 0;
   top: calc(100% + 0.375rem);
   z-index: 70;
-  width: 14rem;
+  width: min(14rem, calc(100vw - 1.5rem));
   overflow: hidden;
   border-radius: var(--portal-radius);
   border: 1px solid var(--portal-line);
@@ -818,12 +842,13 @@
   justify-content: space-between;
   gap: 0.375rem;
   margin-bottom: 0.5rem;
+  min-width: 0;
 }
 
 .portal-section-title {
   margin: 0;
   font-family: var(--portal-font);
-  font-size: 1rem;
+  font-size: clamp(0.9375rem, 2.5vw, 1rem);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--portal-ink);
@@ -831,6 +856,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.375rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .portal-section-desc {
@@ -839,6 +866,7 @@
   line-height: 1.5;
   color: var(--portal-muted);
   max-width: none;
+  overflow-wrap: anywhere;
 }
 
 /* ——— KPI ——— */
@@ -1405,9 +1433,12 @@
 
 .portal-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   border-radius: var(--portal-radius);
   border: 1px solid rgb(183 90 34 / 0.14);
   background: rgb(255 249 243 / 0.35);
+  max-width: 100%;
 }
 
 .portal-table-wrap--fill {
@@ -1425,6 +1456,7 @@
 
 .portal-table {
   width: 100%;
+  min-width: 36rem;
   border-collapse: collapse;
   font-size: 0.75rem;
 }
@@ -1460,9 +1492,9 @@
 .portal-modal {
   position: relative;
   display: flex;
-  width: 100%;
+  width: min(100%, calc(100vw - 1.5rem));
   max-width: 32rem;
-  max-height: min(90vh, 42rem);
+  max-height: min(90dvh, 42rem);
   flex-direction: column;
   overflow: hidden;
   border-radius: 0.75rem;
@@ -1918,6 +1950,16 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.22);
 }
 
+.nav-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .nav-float button {
   color: rgb(255 249 243 / 0.55);
 }
@@ -1926,6 +1968,13 @@
 .nav-float .bg-bea-copper {
   background: rgb(255 255 255 / 0.14) !important;
   color: #fff !important;
+}
+
+.portal-mobile-nav-btn {
+  color: rgb(255 249 243 / 0.55);
+  flex: 1 0 auto;
+  min-width: 4.25rem;
+  max-width: 6.5rem;
 }
 
 .portal-mobile-nav-btn--active {

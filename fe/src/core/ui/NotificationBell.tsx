@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { portalPathForTab } from '@core/routing/tabRoutes';
+import { onVisibleOnlineInterval } from '@core/net/lowSignal';
 import { AppNotification, notificationService } from '@core/services/notificationService';
 
 export function NotificationBell() {
@@ -24,10 +25,9 @@ export function NotificationBell() {
     void reload().catch(() => {
       /* bell is best-effort */
     });
-    const t = window.setInterval(() => {
+    return onVisibleOnlineInterval(() => {
       void notificationService.unreadCount().then((c) => setUnread(c.count)).catch(() => undefined);
     }, 60_000);
-    return () => window.clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -53,10 +53,10 @@ export function NotificationBell() {
   };
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative shrink-0" ref={rootRef}>
       <button
         type="button"
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-bea-line bg-white text-bea-ink hover:bg-bea-ivory-light"
+        className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-bea-line bg-white text-bea-ink hover:bg-bea-ivory-light"
         aria-label="Notifikasi"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -70,12 +70,12 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-bea-line bg-white shadow-lg">
-          <div className="flex items-center justify-between border-b border-bea-line px-3 py-2">
-            <p className="text-sm font-semibold text-bea-ink">Notifikasi</p>
+        <div className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-bea-line bg-white shadow-lg">
+          <div className="flex items-center justify-between gap-2 border-b border-bea-line px-3 py-2">
+            <p className="min-w-0 truncate text-sm font-semibold text-bea-ink">Notifikasi</p>
             <button
               type="button"
-              className="text-xs text-bea-copper underline"
+              className="shrink-0 text-xs text-bea-copper underline"
               onClick={() =>
                 void notificationService
                   .markAllRead()
@@ -89,7 +89,7 @@ export function NotificationBell() {
               Tandai semua dibaca
             </button>
           </div>
-          <ul className="max-h-80 overflow-auto">
+          <ul className="max-h-[min(20rem,60vh)] overflow-auto">
             {items.length === 0 ? (
               <li className="px-3 py-6 text-center text-xs text-bea-sage-muted">Belum ada notifikasi.</li>
             ) : (
@@ -100,8 +100,8 @@ export function NotificationBell() {
                     className={`w-full px-3 py-2.5 text-left hover:bg-bea-ivory-light ${n.isRead ? '' : 'bg-bea-ivory-light/60'}`}
                     onClick={() => void onClickItem(n)}
                   >
-                    <p className="text-sm font-medium text-bea-ink">{n.title}</p>
-                    {n.body ? <p className="mt-0.5 text-xs text-bea-sage-muted line-clamp-2">{n.body}</p> : null}
+                    <p className="text-sm font-medium text-bea-ink break-words">{n.title}</p>
+                    {n.body ? <p className="mt-0.5 text-xs text-bea-sage-muted line-clamp-2 break-words">{n.body}</p> : null}
                     <p className="mt-1 text-[10px] text-bea-sage-muted">
                       {new Date(n.createdAt).toLocaleString('id-ID')}
                     </p>
